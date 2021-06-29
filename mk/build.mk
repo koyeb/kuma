@@ -33,7 +33,7 @@ COREDNS_PLUGIN_CFG_PATH ?= $(TOP)/tools/builds/coredns/templates/plugin.cfg
 build: build/release build/test
 
 .PHONY: build/release
-build/release: build/kuma-cp build/kuma-dp build/kumactl build/kuma-cni build/kuma-prometheus-sd build/coredns ## Dev: Build all binaries
+build/release: build/kuma-cp build/kuma-dp build/kumactl build/kuma-cni build/kuma-cni-install build/kuma-prometheus-sd build/coredns ## Dev: Build all binaries
 
 .PHONY: build/test
 build/test: build/test-server
@@ -65,6 +65,10 @@ build/kumactl: ## Dev: Build `kumactl` binary
 .PHONY: build/kuma-cni
 build/kuma-cni:
 	$(GO_BUILD) -o $(BUILD_ARTIFACTS_DIR)/kuma-cni/kuma-cni ./app/kuma-cni
+
+.PHONY: build/kuma-cni-install
+build/kuma-cni-install:
+	$(GO_BUILD) -o $(BUILD_ARTIFACTS_DIR)/kuma-cni/kuma-cni-install ./app/kuma-cni-install
 
 .PHONY: build/coredns
 build/coredns:
@@ -100,6 +104,10 @@ build/kumactl/linux-amd64:
 .PHONY: build/kuma-cni/linux-amd64
 build/kuma-cni/linux-amd64:
 	GOOS=linux GOARCH=amd64 $(MAKE) build/kuma-cni
+
+.PHONY: build/kuma-cni-install/linux-amd64
+build/kuma-cni-install/linux-amd64:
+	GOOS=linux GOARCH=amd64 $(MAKE) build/kuma-cni-install
 
 .PHONY: build/kuma-prometheus-sd/linux-amd64
 build/kuma-prometheus-sd/linux-amd64:
