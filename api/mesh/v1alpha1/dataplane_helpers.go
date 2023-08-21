@@ -462,6 +462,11 @@ func (d *Dataplane) IsBuiltinGateway() bool {
 		d.GetNetworking().GetGateway().GetType() == Dataplane_Networking_Gateway_BUILTIN
 }
 
+func (d *Dataplane) IsKoyebIngressGateway() bool {
+	return d.GetNetworking().GetGateway() != nil &&
+		d.GetNetworking().GetGateway().GetType() == Dataplane_Networking_Gateway_KOYEB_INGRESS_GATEWAY
+}
+
 func (t MultiValueTagSet) String() string {
 	var tags []string
 	for tag := range t {
