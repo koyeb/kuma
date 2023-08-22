@@ -4,7 +4,7 @@ name: dp
 networking:
   address: 127.0.0.1
   admin:
-    port: 9902
+    port: 9904
   inbound:
     - port: 9931
       servicePort: 8001

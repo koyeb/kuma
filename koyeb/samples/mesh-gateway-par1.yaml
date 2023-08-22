@@ -1,0 +1,14 @@
+type: MeshGateway
+mesh: default
+name: "ingress-gateway-par1"
+selectors:
+- match:
+    kuma.io/service: "ingress-gateway"
+conf:
+  listeners:
+  - port: 5601
+    protocol: HTTP
+    hostname: "*"
+  #- port: 5602
+  #  protocol: HTTPS
+  #  hostname: "*"
