@@ -1,7 +1,15 @@
 
 set dotenv-load
 
-artifacts := "./build/artifacts-darwin-amd64/"
+use_debugger := if env_var_or_default("DEBUGGER", "") != "" { "yes" } else { "no" }
+artifacts := "./build/artifacts-darwin-amd64"
+kumactl := artifacts / "kumactl/kumactl"
+kuma-cp := artifacts / "kuma-cp/kuma-cp"
+kuma-dp := artifacts / "kuma-dp/kuma-dp"
+
+dev-kumactl := if use_debugger == "yes" { "dlv debug app/kumactl/main.go --" } else { kumactl }
+dev-kuma-cp := if use_debugger == "yes" { "dlv debug app/kuma-cp/main.go --" } else { kuma-cp }
+dev-kuma-dp := if use_debugger == "yes" { "dlv debug app/kuma-dp/main.go --" } else { kuma-dp }
 
 default:
   @just --list
@@ -66,10 +74,14 @@ _build-dp:
 #  {{artifacts}}/kuma-cp/kuma-cp run --log-level info -c koyeb/samples/config-cp.yaml
 #
 #
-#cp-global: gen-certs _build-cp
-#  {{artifacts}}/kuma-cp/kuma-cp -c koyeb/samples/config-global.yaml migrate up
-#
-#
+cp-global: _build-cp
+  {{kuma-cp}} -c koyeb/samples/cp-global.yaml migrate up
+  {{dev-kuma-cp}} -c koyeb/samples/cp-global.yaml run
+
+cp-par1: _build-cp
+  {{kuma-cp}} -c koyeb/samples/cp-par1.yaml migrate up
+  {{dev-kuma-cp}} -c koyeb/samples/cp-par1.yaml run
+
 #  # custom ports for cp-global
 #  KUMA_API_SERVER_HTTP_PORT=4281 \
 #    KUMA_DIAGNOSTICS_SERVER_PORT=4280 \
@@ -84,8 +96,8 @@ _build-dp:
 #  cat ./koyeb/samples/default-mesh.yaml | {{artifacts}}/kumactl/kumactl apply --config-file ./koyeb/samples/kumactl-global-config.yaml -f -
 
 ingress: _build-dp
-  {{artifacts}}/kumactl/kumactl generate zone-token --zone=par1 --valid-for 720h --scope ingress > /tmp/dp-token-ingress
-  {{artifacts}}/kuma-dp/kuma-dp run \
+  {{kumactl}} generate zone-token --zone=par1 --valid-for 720h --scope ingress > /tmp/dp-token-ingress
+  {{dev-kuma-dp}} run \
     --proxy-type=ingress \
     --cp-address=https://127.0.0.1:5678 \
     --dataplane-token-file=/tmp/dp-token-ingress \
@@ -95,11 +107,13 @@ ingress: _build-dp
 #glb: gen-certs _build-dp _init-default
 #  {{artifacts}}/kumactl/kumactl generate zone-ingress-token --zone par1  > /tmp/dp-token-glb
 #  {{artifacts}}/kuma-dp/kuma-dp run --dataplane-token-file /tmp/dp-token-glb --dns-coredns-config-template-path ./koyeb/samples/Corefile --dns-coredns-port 10053 --dns-envoy-port 10050 --log-level info --cp-address https://localhost:5678 --ca-cert-file ./build/koyeb/tls-cert/ca.pem --admin-port 4243 -d ./koyeb/samples/ingress-glb.yaml  --proxy-type ingress
-#
-#igw: gen-certs _build-dp _init-default
-#  {{artifacts}}/kumactl/kumactl generate zone-ingress-token --zone par1  > /tmp/dp-token-ingress
-#  {{artifacts}}/kuma-dp/kuma-dp run --dataplane-token-file /tmp/dp-token-ingress --dns-coredns-config-template-path ./koyeb/samples/Corefile --dns-coredns-port 10053 --dns-envoy-port 10050 --log-level info --cp-address https://localhost:5678 --ca-cert-file ./build/koyeb/tls-cert/ca.pem --admin-port 4242 -d ./koyeb/samples/ingress.yaml  --proxy-type ingress
-#
+
+igw: _build-dp
+  cat koyeb/samples/mesh-gateway-par1.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+
+  {{kumactl}} generate dataplane-token -m default --valid-for 720h --config-file koyeb/samples/kumactl-configs/par1-cp.yaml > /tmp/igw-par1-token
+  {{dev-kuma-dp}} run --dataplane-token-file /tmp/igw-par1-token --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/ingress-gateway-par1.yaml
+
 #test-grpc:
 #  grpcurl --plaintext localhost:8004 main.HelloWorld/Greeting
 #  # evans required for advance tls config for igw
@@ -149,19 +163,24 @@ ingress: _build-dp
 #
 #dp-container-ws:
 #  docker run -ti -p 8001:8080 jmalloc/echo-server
-#
+
 dp-container:
   docker run -ti -p 8001-8010:8001-8010 kalmhq/echoserver:latest
 
 dp dp_name="dp" mesh="abc": _build-dp
   # Upsert abc mesh
-  cat ./koyeb/samples/{{mesh}}-mesh.yaml | {{artifacts}}/kumactl/kumactl apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+  cat ./koyeb/samples/{{mesh}}-mesh.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
   # Upsert abc Virtual Outbound
-  cat ./koyeb/samples/abc-virtual-outbound.yaml | {{artifacts}}/kumactl/kumactl apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+  cat ./koyeb/samples/abc-virtual-outbound.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+
+  # Wait some time for the mesh to be propagated to the zonal CP...
+  sleep 2
+
   # Finally, upsert the dataplane
-  cat ./koyeb/samples/{{mesh}}-{{dp_name}}.yaml | ./{{artifacts}}/kumactl/kumactl apply --config-file koyeb/samples/kumactl-configs/par1-cp.yaml -f -
+  cat ./koyeb/samples/{{mesh}}-{{dp_name}}.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/par1-cp.yaml -f -
+
 
   # Generate a token for the dataplane instance
-  {{artifacts}}/kumactl/kumactl generate dataplane-token -m {{mesh}} --valid-for 720h --config-file koyeb/samples/kumactl-configs/par1-cp.yaml > /tmp/{{mesh}}-{{dp_name}}-token
+  {{kumactl}} generate dataplane-token -m {{mesh}} --valid-for 720h --config-file koyeb/samples/kumactl-configs/par1-cp.yaml > /tmp/{{mesh}}-{{dp_name}}-token
   # Run the dataplane
-  {{artifacts}}/kuma-dp/kuma-dp run --dataplane-token-file /tmp/{{mesh}}-{{dp_name}}-token --name {{dp_name}} --log-level info --cp-address https://localhost:5678 --mesh {{mesh}}
+  {{dev-kuma-dp}} run --dataplane-token-file /tmp/{{mesh}}-{{dp_name}}-token --name {{dp_name}} --log-level info --cp-address https://localhost:5678 --mesh {{mesh}}
