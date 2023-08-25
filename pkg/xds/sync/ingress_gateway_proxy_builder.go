@@ -11,11 +11,6 @@ import (
 	"github.com/kumahq/kuma/pkg/xds/envoy"
 )
 
-const (
-	//TODO(nicoche) use something else
-	zoneIngressName string = "zoneingress-par1"
-)
-
 type IngressGatewayProxyBuilder struct {
 	*IngressProxyBuilder
 }
@@ -44,8 +39,10 @@ func (p *IngressGatewayProxyBuilder) Build(
 	// update its AvailableServices field that is full of the info we
 	// need to build the ZoneIngressProxy
 	zoneIngressKey := core_model.ResourceKey{
-		Name: zoneIngressName,
-		Mesh: "", // A ZoneIngress is not part of any mesh
+		// NOTE(nicoche): change that
+		Name: "zoneingress-par1",
+		// A ZoneIngress is not part of any mesh
+		Mesh: "",
 	}
 	zoneIngress, err := p.getZoneIngress(ctx, zoneIngressKey, aggregatedMeshCtxs)
 	if err != nil {

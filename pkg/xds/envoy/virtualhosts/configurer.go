@@ -65,7 +65,6 @@ func SetResponseHeader(name string, value string) VirtualHostBuilderOpt {
 	)
 }
 
-
 func SetRequestHeader(name string, value string) VirtualHostBuilderOpt {
 	return AddVirtualHostConfigurer(
 		VirtualHostMustConfigureFunc(func(vh *envoy_config_route_v3.VirtualHost) {

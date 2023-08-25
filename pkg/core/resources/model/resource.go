@@ -37,7 +37,7 @@ type ResourceKey struct {
 }
 
 func (k ResourceKey) IsKoyebIngressGateway() bool {
-	return k.Mesh == "default" && strings.Contains(k.Name, "ingress-gateway") 
+	return k.Mesh == "default" && strings.Contains(k.Name, "ingress-gateway")
 }
 
 type ResourceScope string

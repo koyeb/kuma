@@ -32,7 +32,6 @@ func (p *plugin) BeforeBootstrap(context *core_plugins.MutablePluginContext, con
 }
 
 func (p *plugin) AfterBootstrap(context *core_plugins.MutablePluginContext, config core_plugins.PluginConfig) error {
-
 	// NOTE(nicoche): not sure if this is useful
 	// Insert our resolver before the default so that we can intercept
 	// builtin gateway dataplanes.

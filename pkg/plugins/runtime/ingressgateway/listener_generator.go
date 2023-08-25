@@ -23,11 +23,10 @@ type RuntimeResoureLimitListener struct {
 
 // TODO(nicoche) take GatewayListenerInfo as input, maybe
 func GenerateListener(proxy *core_xds.Proxy) (*envoy_listeners.ListenerBuilder, *RuntimeResoureLimitListener) {
+	// TODO(nicoche) change, it comes from meshGateway
 
-	//TODO(nicoche) change, it comes from meshGateway
-	//port := proxy.Dataplane.Spec.GetNetworking().Inbound[0].GetPort()
 	var port uint32 = 5601
-	//TODO(nicoche) change, it comes from MeshGateway
+
 	protocol := mesh_proto.MeshGateway_Listener_HTTP
 	address := proxy.Dataplane.Spec.GetNetworking().Address
 
@@ -39,8 +38,7 @@ func GenerateListener(proxy *core_xds.Proxy) (*envoy_listeners.ListenerBuilder, 
 
 	// TODO(nicoche): whatever -> from meshGateway
 	name := envoy_names.GetGatewayListenerName("whatever", protocol.String(), port)
-
-	//TODO(nicoche): maybe incorporate MeshGateway resources
+	// NOTE(nicoche_: Maybe use MeshGateway resources here instead of no limit
 	var limits *RuntimeResoureLimitListener
 
 	return envoy_listeners.NewInboundListenerBuilder(
