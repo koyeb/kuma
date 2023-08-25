@@ -16,6 +16,7 @@ const (
 	// Mandatory tag that has a reserved meaning in Kuma.
 	ServiceTag     = "kuma.io/service"
 	ServiceUnknown = "unknown"
+	KoyebZoneTag   = "koyeb.com/zone"
 
 	// Locality related tags
 	ZoneTag = "kuma.io/zone"
