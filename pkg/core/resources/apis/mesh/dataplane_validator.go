@@ -254,6 +254,7 @@ func validateGateway(gateway *mesh_proto.Dataplane_Networking_Gateway) validator
 	}
 	result.Add(ValidateTags(validators.RootedAt("tags"), gateway.Tags, ValidateTagsOpts{
 		RequireService:      true,
+		RequireKoyebZone:    gateway.Type == mesh_proto.Dataplane_Networking_Gateway_KOYEB_INGRESS_GATEWAY,
 		ExtraTagsValidators: []TagsValidatorFunc{validateProtocol},
 	}),
 	)
