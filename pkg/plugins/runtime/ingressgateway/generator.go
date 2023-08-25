@@ -10,10 +10,10 @@ import (
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/gateway/metadata"
-	envoy_routes "github.com/kumahq/kuma/pkg/xds/envoy/routes"
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	envoy_listeners "github.com/kumahq/kuma/pkg/xds/envoy/listeners"
+	envoy_routes "github.com/kumahq/kuma/pkg/xds/envoy/routes"
 )
 
 const (
@@ -31,6 +31,7 @@ type FilterChainGenerator interface {
 type Generator struct {
 	Zone                     string
 	HTTPFilterChainGenerator FilterChainGenerator
+	ClusterGenerator         *ClusterGenerator
 }
 
 type Route struct {
@@ -54,6 +55,12 @@ func (g Generator) Generate(
 
 	// NOTE(nicoche) We're supposed to iterate on listeners here but for now we
 	// only keep one listener
+	cdsResources, err := g.generateCDS(ctx, xdsCtx, proxy)
+	if err != nil {
+		return nil, err
+	}
+	resources.AddSet(cdsResources)
+
 	ldsResources, limit, err := g.generateLDS(ctx, xdsCtx, proxy)
 	if err != nil {
 		return nil, err
@@ -69,7 +76,6 @@ func (g Generator) Generate(
 		return nil, err
 	}
 	resources.AddSet(rdsResources)
-
 	// TODO(nicoche) end iteration supposed to be here
 
 	resources.Add(g.generateRTDS(limits))
@@ -121,6 +127,22 @@ func (g Generator) generateLDS(ctx context.Context, xdsCtx xds_context.Context, 
 	return resources, limit, nil
 }
 
+func (g Generator) generateCDS(
+	ctx context.Context,
+	xdsCtx xds_context.Context,
+	proxy *core_xds.Proxy,
+) (*core_xds.ResourceSet, error) {
+	resources := core_xds.NewResourceSet()
+
+	clusterRes, err := g.ClusterGenerator.GenerateClusters(ctx, xdsCtx, proxy)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to generate clusters for dataplane %q", proxy.Id)
+	}
+	resources.AddSet(clusterRes)
+
+	return resources, nil
+}
+
 func (g Generator) generateRDS(protocol mesh_proto.MeshGateway_Listener_Protocol, xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, error) {
 	switch protocol {
 	case mesh_proto.MeshGateway_Listener_HTTPS,
@@ -147,4 +169,3 @@ func (g Generator) generateRDS(protocol mesh_proto.MeshGateway_Listener_Protocol
 
 	return resources, nil
 }
-
