@@ -40,10 +40,6 @@ type Route struct {
 	DeploymentGroup string
 }
 
-func (r Route) key() string {
-	return r.DeploymentGroup
-}
-
 func (g Generator) Generate(
 	ctx context.Context,
 	xdsCtx xds_context.Context,
@@ -61,7 +57,7 @@ func (g Generator) Generate(
 	}
 	resources.AddSet(cdsResources)
 
-	ldsResources, limit, err := g.generateLDS(ctx, xdsCtx, proxy)
+	ldsResources, limit, err := g.generateLDS(xdsCtx, proxy)
 	if err != nil {
 		return nil, err
 	}
@@ -101,12 +97,10 @@ func (g Generator) generateRTDS(limits []RuntimeResoureLimitListener) *core_xds.
 	return res
 }
 
-func (g Generator) generateLDS(ctx context.Context, xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
+func (g Generator) generateLDS(xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
 	resources := core_xds.NewResourceSet()
 
 	listenerBuilder, limit := GenerateListener(proxy)
-
-	//hostname := "*"
 
 	res, filterChainBuilders, err := g.HTTPFilterChainGenerator.Generate(xdsCtx, proxy)
 	if err != nil {

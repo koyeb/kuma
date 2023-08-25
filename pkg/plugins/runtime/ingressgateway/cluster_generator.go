@@ -6,6 +6,8 @@ import (
 	"sort"
 
 	envoy_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	"golang.org/x/exp/maps"
+
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
@@ -14,11 +16,9 @@ import (
 	envoy_endpoints "github.com/kumahq/kuma/pkg/xds/envoy/endpoints"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	"github.com/kumahq/kuma/pkg/xds/generator/zoneproxy"
-	"golang.org/x/exp/maps"
 )
 
-type ClusterGenerator struct {
-}
+type ClusterGenerator struct{}
 
 func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, error) {
 	resources := core_xds.NewResourceSet()
@@ -38,12 +38,10 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 		)
 
 		for _, service := range services {
-			deploymentGroup := "prod"
-			//deploymentGroup := dest[service]//["koyeb.com/deploymentgroup"]
+			// NOTE(nicoche): see if we should grab this dynamically
+			clusterName := fmt.Sprintf("%s_%s", service, "prod")
 
 			// CDS
-			clusterName := fmt.Sprintf("%s_%s", service, deploymentGroup)
-
 			r, err := generateEdsCluster(proxy, clusterName, service, dest)
 			if err != nil {
 				return nil, err
@@ -70,8 +68,9 @@ func generateEdsCluster(proxy *core_xds.Proxy, clusterName string, service strin
 
 	clusterBuilder := clusters.NewClusterBuilder(proxy.APIVersion, clusterName).Configure(
 		clusters.EdsCluster(),
+
 		clusters.LbSubset(tagKeySlice),
-		//TODO(nicoche): MTLS
+
 		clusters.ConnectionBufferLimit(DefaultConnectionBuffer),
 	)
 

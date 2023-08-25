@@ -3,13 +3,14 @@ package ingressgateway
 import (
 	"net/http"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/route"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	envoy_virtual_hosts "github.com/kumahq/kuma/pkg/xds/envoy/virtualhosts"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var defaultRetryPolicy = core_mesh.RetryResource{
@@ -20,7 +21,7 @@ var defaultRetryPolicy = core_mesh.RetryResource{
 					Value: 3,
 				},
 				// Required even if empty
-				//RetriableStatusCodes: []uint32{},
+				// RetriableStatusCodes: []uint32{},
 			},
 		},
 	},

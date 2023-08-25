@@ -5,6 +5,7 @@ import (
 
 	envoy_config_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
+
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
@@ -48,11 +49,9 @@ var defaultTracingBackend = mesh_proto.TracingBackend{
 	}),
 }
 
-type HTTPFilterChainGenerator struct {
-}
+type HTTPFilterChainGenerator struct{}
 
 func (g *HTTPFilterChainGenerator) Generate(xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error) {
-
 	log.V(1).Info("generating filter chain", "protocol", "HTTP")
 
 	// HTTP listeners get a single filter chain for all hostnames. So
@@ -75,17 +74,18 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 		// Use dynamic routes because we are going to update them often. Whenever a static route
 		// is updated, the listener is reloaded, which resets all inbound connections.
 		// We want to keep those connections live because they could be long-lived (e.g. websockets)
-		//TODO(nicoche) Use correct name from MeshGateway
+
+		// NOTE(nicoche: Use the correct name from MeshGateway)
 		envoy_listeners.HttpDynamicRoute(envoy_names.GetGatewayListenerName("whatever", mesh_proto.MeshGateway_Listener_HTTP.String(), uint32(5601))),
-		//envoy_listeners.ServerSideMTLSPublicIngress(mesh),
-		//envoy_listeners.HttpWebsocketConnectionManager(inboundListenerName, true),
-		//envoy_listeners.MaxConnectAttempts(&defaultRetryPolicy),
-		//envoy_listeners.LocalReplyConfig(
+		// envoy_listeners.ServerSideMTLSPublicIngress(mesh),
+		// envoy_listeners.HttpWebsocketConnectionManager(inboundListenerName, true),
+		// envoy_listeners.MaxConnectAttempts(&defaultRetryPolicy),
+		// envoy_listeners.LocalReplyConfig(
 		//	mapper503To502,
 		//	// If X-KOYEB-ROUTE does not fit to an existing cluster, display
 		//	// a custom HTML page and a 503 error code
 		//	igwFallbackNoClusterHeader,
-		//),
+		// ),
 	)
 
 	// Add edge proxy recommendations.
@@ -119,13 +119,14 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 		// is a no-op unless we later add a per-route configuration.
 		envoy_listeners.RateLimit([]*core_mesh.RateLimitResource{nil}),
 		envoy_listeners.DefaultCompressorFilter(),
-		//TODO(nicoche) add an actual TrafficTrace resource
-		//TODO(nicoche) add request header here
-		//[]listeners_v3.RequestHeaderCustomTag{
+		// TODO(nicoche) add request header here
+		// []listeners_v3.RequestHeaderCustomTag{
 		// {Name: "http.header.x-koyeb-route", HeaderName: "x-koyeb-route"},
 		// {Name: "http.header.host", HeaderName: "host"}
 		//}
-		envoy_listeners.Tracing(xdsCtx.Mesh.GetTracingBackend(proxy.Policies.TrafficTrace), service, envoy_common.TrafficDirectionUnspecified, ""),
+		// TODO(nicoche): add an actual TrafficTrace resource to GetTracingBackend(proxy.Policies.TrafficTrace)
+		// envoy_listeners.Tracing(xdsCtx.Mesh.GetTracingBackend(proxy.Policies.TrafficTrace), service, envoy_common.TrafficDirectionUnspecified, ""),
+		envoy_listeners.Tracing(&defaultTracingBackend, service, envoy_common.TrafficDirectionUnspecified, ""),
 		// In mesh proxies, the access log is configured on the outbound
 		// listener, which is why we index the Logs slice by destination
 		// service name.  A Gateway listener by definition forwards traffic
@@ -149,7 +150,7 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 	return builder
 }
 
-//mesh := &mesh.MeshResource{
+// mesh := &mesh.MeshResource{
 //	Spec: &mesh_proto.Mesh{
 //		Mtls: &mesh_proto.Mesh_Mtls{
 //			EnabledBackend: "koyeb-custom",
