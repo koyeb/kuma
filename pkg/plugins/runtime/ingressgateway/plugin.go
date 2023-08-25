@@ -59,8 +59,9 @@ func (p *plugin) Order() int {
 
 func NewGenerator(zone string) Generator {
 	return Generator{
-		Zone: zone,
+		Zone:                     zone,
 		HTTPFilterChainGenerator: &HTTPFilterChainGenerator{},
+		ClusterGenerator:         &ClusterGenerator{},
 	}
 }
 
