@@ -164,14 +164,20 @@ igw: _build-dp
 #dp-container-ws:
 #  docker run -ti -p 8001:8080 jmalloc/echo-server
 
-dp-container:
+dp-container1:
   docker run -ti -p 8001-8010:8001-8010 kalmhq/echoserver:latest
+
+dp-container2:
+  # This container should never receive any request. It should be ensured by abc's TrafficRoute policy
+  docker run -p 9941:5678 hashicorp/http-echo -text="ERROR!! I'm a leftover container for a service. I do not have the right koyeb.com/global-deployment tag, hence I should not receive any request!"
 
 dp dp_name="dp" mesh="abc": _build-dp
   # Upsert abc mesh
   cat ./koyeb/samples/{{mesh}}-mesh.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
   # Upsert abc Virtual Outbound
   cat ./koyeb/samples/abc-virtual-outbound.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+  # Upsert abc TrafficRoute
+  cat ./koyeb/samples/abc-traffic-route.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
 
   # Wait some time for the mesh to be propagated to the zonal CP...
   sleep 2
