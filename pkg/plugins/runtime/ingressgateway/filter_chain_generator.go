@@ -41,13 +41,13 @@ const (
 )
 
 // TODO(nicoche): Move this into an actual kuma CRD
-var defaultTracingBackend = mesh_proto.TracingBackend{
-	Name: "jaeger-collector",
-	Type: mesh_proto.TracingZipkinType,
-	Conf: util_proto.MustToStruct(&mesh_proto.ZipkinTracingBackendConfig{
-		Url: "http://127.0.0.1:9411/",
-	}),
-}
+// var defaultTracingBackend = mesh_proto.TracingBackend{
+// 	Name: "jaeger-collector",
+// 	Type: mesh_proto.TracingZipkinType,
+// 	Conf: util_proto.MustToStruct(&mesh_proto.ZipkinTracingBackendConfig{
+// 		Url: "http://127.0.0.1:9411/",
+// 	}),
+// }
 
 type HTTPFilterChainGenerator struct{}
 
@@ -126,7 +126,7 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 		//}
 		// TODO(nicoche): add an actual TrafficTrace resource to GetTracingBackend(proxy.Policies.TrafficTrace)
 		// envoy_listeners.Tracing(xdsCtx.Mesh.GetTracingBackend(proxy.Policies.TrafficTrace), service, envoy_common.TrafficDirectionUnspecified, ""),
-		envoy_listeners.Tracing(&defaultTracingBackend, service, envoy_common.TrafficDirectionUnspecified, ""),
+		// envoy_listeners.Tracing(&defaultTracingBackend, service, envoy_common.TrafficDirectionUnspecified, ""),
 		// In mesh proxies, the access log is configured on the outbound
 		// listener, which is why we index the Logs slice by destination
 		// service name.  A Gateway listener by definition forwards traffic

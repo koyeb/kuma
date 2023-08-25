@@ -5,6 +5,8 @@ import (
 	envoy_config_route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"github.com/pkg/errors"
 
+	envoy_metadata "github.com/kumahq/kuma/pkg/xds/envoy/metadata/v3"
+	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	envoy_virtual_hosts "github.com/kumahq/kuma/pkg/xds/envoy/virtualhosts"
 )
 
@@ -84,18 +86,23 @@ func RouteMatchPresentHeader(name string, presentMatch bool) RouteConfigurer {
 	})
 }
 
-func RouteActionClusterHeader(header string) RouteConfigurer {
+func RouteActionClusterHeader(header string, tags envoy_tags.Tags) RouteConfigurer {
 	if header == "" {
 		return RouteConfigureFunc(nil)
 	}
 
 	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
-		r.Action = &envoy_config_route.Route_Route{
-			Route: &envoy_config_route.RouteAction{
-				ClusterSpecifier: &envoy_config_route.RouteAction_ClusterHeader{
-					ClusterHeader: header,
-				},
+		rAction := &envoy_config_route.RouteAction{
+			ClusterSpecifier: &envoy_config_route.RouteAction_ClusterHeader{
+				ClusterHeader: header,
 			},
+		}
+		if len(tags) != 0 {
+			rAction.MetadataMatch = envoy_metadata.LbMetadata(tags)
+		}
+
+		r.Action = &envoy_config_route.Route_Route{
+			Route: rAction,
 		}
 	})
 }
