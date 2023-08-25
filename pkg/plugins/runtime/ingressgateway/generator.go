@@ -154,7 +154,12 @@ func (g Generator) generateRDS(protocol mesh_proto.MeshGateway_Listener_Protocol
 	resources := core_xds.NewResourceSet()
 	routeConfig := GenerateRouteConfig(mesh_proto.MeshGateway_Listener_HTTP, proxy)
 
-	vh, err := GenerateVirtualHost(xdsCtx, proxy, nil)
+	routeBuilders, err := GenerateRouteBuilders(proxy)
+	if err != nil {
+		return nil, err
+	}
+
+	vh, err := GenerateVirtualHost(xdsCtx, proxy, routeBuilders)
 	if err != nil {
 		return nil, err
 	}

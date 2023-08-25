@@ -65,3 +65,37 @@ func RouteActionDirectResponse(status uint32, respStr string) RouteConfigurer {
 		return nil
 	})
 }
+
+// RouteMatchPresentHeader appends a present match for the names HTTP request header (presentMatch makes absent)
+func RouteMatchPresentHeader(name string, presentMatch bool) RouteConfigurer {
+	if name == "" {
+		return RouteConfigureFunc(nil)
+	}
+
+	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
+		r.Match.Headers = append(r.Match.Headers,
+			&envoy_config_route.HeaderMatcher{
+				Name: name,
+				HeaderMatchSpecifier: &envoy_config_route.HeaderMatcher_PresentMatch{
+					PresentMatch: presentMatch,
+				},
+			},
+		)
+	})
+}
+
+func RouteActionClusterHeader(header string) RouteConfigurer {
+	if header == "" {
+		return RouteConfigureFunc(nil)
+	}
+
+	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
+		r.Action = &envoy_config_route.Route_Route{
+			Route: &envoy_config_route.RouteAction{
+				ClusterSpecifier: &envoy_config_route.RouteAction_ClusterHeader{
+					ClusterHeader: header,
+				},
+			},
+		}
+	})
+}
