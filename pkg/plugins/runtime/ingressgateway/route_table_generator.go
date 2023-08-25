@@ -41,7 +41,6 @@ func GenerateVirtualHost(xdsCtx xds_context.Context, proxy *core_xds.Proxy, rout
 	routes = append(routes, getHealthRouteBuilder())
 	routes = append(routes, getFallbackRouteBuilder())
 
-	//TODO next: follow IGW generator and check what we do to generate routes
 	for _, rb := range routes {
 		vh.Configure(route.VirtualHostRoute(rb))
 	}
