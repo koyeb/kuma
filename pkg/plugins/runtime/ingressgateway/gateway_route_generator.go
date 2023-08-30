@@ -92,6 +92,7 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 					}
 				}
 
+				// NOTE(nicoche) This generates too many routes for no reason. Fix that
 				routeBuilder := &route.RouteBuilder{}
 				routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
 				routeBuilder.Configure(route.RouteMatchPresentHeader("X-KOYEB-ROUTE", true))

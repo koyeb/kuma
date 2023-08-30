@@ -6,9 +6,8 @@ import (
 	"sort"
 
 	envoy_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	"golang.org/x/exp/maps"
-
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
+	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
@@ -16,6 +15,7 @@ import (
 	envoy_endpoints "github.com/kumahq/kuma/pkg/xds/envoy/endpoints"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	"github.com/kumahq/kuma/pkg/xds/generator/zoneproxy"
+	"golang.org/x/exp/maps"
 )
 
 type ClusterGenerator struct{}
@@ -29,11 +29,13 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 	}
 
 	for _, mr := range proxy.ZoneIngressProxy.MeshResourceList {
-		meshName := mr.Mesh.GetMeta().GetName()
+		targetMesh := mr.Mesh
+		targetMeshName := targetMesh.GetMeta().GetName()
 		services := maps.Keys(mr.EndpointMap)
 		sort.Strings(services)
+
 		dest := zoneproxy.BuildMeshDestinations(
-			availableSvcsByMesh[meshName],
+			availableSvcsByMesh[targetMeshName],
 			xds_context.Resources{MeshLocalResources: mr.Resources},
 		)
 
@@ -42,7 +44,7 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 			clusterName := fmt.Sprintf("%s_%s", service, "prod")
 
 			// CDS
-			r, err := generateEdsCluster(proxy, clusterName, service, dest)
+			r, err := generateEdsCluster(proxy, clusterName, service, dest, xdsCtx.Mesh.Resource, targetMesh)
 			if err != nil {
 				return nil, err
 			}
@@ -60,7 +62,14 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 	return resources, nil
 }
 
-func generateEdsCluster(proxy *core_xds.Proxy, clusterName string, service string, dest map[string][]envoy_tags.Tags) (*core_xds.Resource, error) {
+func generateEdsCluster(
+	proxy *core_xds.Proxy,
+	clusterName string,
+	service string,
+	dest map[string][]envoy_tags.Tags,
+	sourceMesh *core_mesh.MeshResource,
+	targetMesh *core_mesh.MeshResource,
+) (*core_xds.Resource, error) {
 	tagSlice := envoy_tags.TagsSlice(append(dest[service], dest[mesh_proto.MatchAllTag]...))
 	tagKeySlice := tagSlice.ToTagKeysSlice().Transform(
 		envoy_tags.Without(mesh_proto.ServiceTag),
@@ -68,10 +77,10 @@ func generateEdsCluster(proxy *core_xds.Proxy, clusterName string, service strin
 
 	clusterBuilder := clusters.NewClusterBuilder(proxy.APIVersion, clusterName).Configure(
 		clusters.EdsCluster(),
-
 		clusters.LbSubset(tagKeySlice),
-
+		clusters.CrossMeshClientSideMTLS(proxy.SecretsTracker, sourceMesh, targetMesh, service, true, tagSlice),
 		clusters.ConnectionBufferLimit(DefaultConnectionBuffer),
+		// clusters.HttpDownstreamProtocolOptions(),
 	)
 
 	r, err := buildClusterResource(clusterBuilder)

@@ -11,6 +11,8 @@ dev-kumactl := if use_debugger == "yes" { "dlv debug app/kumactl/main.go --" } e
 dev-kuma-cp := if use_debugger == "yes" { "dlv debug app/kuma-cp/main.go --" } else { kuma-cp }
 dev-kuma-dp := if use_debugger == "yes" { "dlv debug app/kuma-dp/main.go --" } else { kuma-dp }
 
+certs-path := "./build/koyeb/certs"
+
 default:
   @just --list
 
@@ -23,6 +25,11 @@ run-db:
 stop-db:
   docker stop kuma-db
 
+# This generates a CA cert and its key. Those are expected to be loaded into each mesh
+_generate-cert:
+  mkdir -p {{certs-path}}
+  echo "\n[req]\ndistinguished_name=dn\n[ dn ]\n[ ext ]\nbasicConstraints=CA:TRUE,pathlen:0\nkeyUsage=keyCertSign\n" > /tmp/ca_config
+  openssl req -config /tmp/ca_config -new -newkey rsa:2048 -nodes -subj "/CN=Hello" -x509 -extensions ext -keyout {{certs-path}}/key.pem -out {{certs-path}}/crt.pem
 
 _build-cp:
   make build/kuma-cp
@@ -31,49 +38,6 @@ _build-dp:
   make build/kuma-dp
   make build/kumactl
 
-#_gen-root-ca ca_dir="./build/koyeb":
-#  @mkdir -p {{ca_dir}}
-#  @if [ "{{path_exists(ca_dir + "/rootCA.key")}}" = "false" ] ; then \
-#    echo "generating root ca {{ca_dir}}" && \
-#    openssl genrsa -out {{ca_dir}}/rootCA.key 4096 && \
-#    openssl req -x509 -new -nodes -key {{ca_dir}}/rootCA.key -sha256 -days 10024 -out {{ca_dir}}/rootCA.crt -subj "/C=US/ST=CA/O=koyeb/CN=localhost" ;\
-#  fi
-#
-#_gen-tls dir ca_dir="./build/koyeb" out="cert" config="domains.ext":
-#  @mkdir -p {{dir}}
-#  @if [ "{{path_exists(dir +"/" + out + "-key.pem")}}" = "false" ] ; then \
-#    echo "generating certificated {{dir}}" && \
-#    openssl genrsa -out {{dir}}/{{out}}.key 2048 && \
-#    openssl req -new -sha256 -key {{dir}}/{{out}}.key -subj "/C=US/ST=CA/O=koyeb/CN=localhost" -out {{dir}}/{{out}}.csr  && \
-#    openssl x509 -req -in {{dir}}/{{out}}.csr -CA {{ca_dir}}/rootCA.crt -CAkey {{ca_dir}}/rootCA.key -CAcreateserial -extfile ./koyeb/samples/{{config}} -out {{dir}}/{{out}}.crt -days 5000 -sha256 && \
-#    openssl x509 -in {{dir}}/{{out}}.crt -out {{dir}}/{{out}}.pem -text && \
-#    openssl x509 -in {{ca_dir}}/rootCA.crt -out {{dir}}/ca.pem -text && \
-#    openssl rsa -in {{dir}}/{{out}}.key -text > {{dir}}/{{out}}-key.pem && \
-#    openssl x509 -req -in {{dir}}/{{out}}.csr -CA {{ca_dir}}/rootCA.crt -CAkey {{ca_dir}}/rootCA.key -CAcreateserial -extfile ./koyeb/samples/domains.ext -out {{dir}}/{{out}}-client.crt -days 5000 -sha256 && \
-#    openssl x509 -in {{dir}}/{{out}}.crt -out {{dir}}/{{out}}-client.pem -text ; \
-#  fi
-#
-#gen-certs: _gen-root-ca (_gen-tls "./build/koyeb/tls-cert") (_gen-tls "./build/koyeb/gateway-cert" "./build/koyeb" "tls" "spiffe.ext")
-#  @mkdir -p ./build/koyeb/gateway-client
-#  @cp ./build/koyeb/gateway-cert/ca.pem ./build/koyeb/gateway-client/ca.pem
-#  @cp ./build/koyeb/gateway-cert/tls-client.pem ./build/koyeb/gateway-client/cert.pem
-#  @cp ./build/koyeb/gateway-cert/tls-key.pem ./build/koyeb/gateway-client/cert-key.pem
-#  @cp ./build/koyeb/gateway-cert/tls.pem ./build/koyeb/gateway-cert/gateway.pem
-#  @cp ./build/koyeb/gateway-cert/tls-key.pem ./build/koyeb/gateway-cert/gateway-key.pem
-#
-#rm-certs:
-#  rm -rf ./build/koyeb/rootCA*
-#  rm -rf ./build/koyeb/tls-cert
-#  rm -rf ./build/koyeb/gateway-cert
-#  rm -rf ./build/koyeb/gateway-client
-#
-#
-#cp-local: gen-certs _build-cp
-#  {{artifacts}}/kuma-cp/kuma-cp -c koyeb/samples/config-cp.yaml migrate up
-#  TRACING_URL=http://localhost:14268/api/traces \
-#  {{artifacts}}/kuma-cp/kuma-cp run --log-level info -c koyeb/samples/config-cp.yaml
-#
-#
 cp-global: _build-cp
   {{kuma-cp}} -c koyeb/samples/cp-global.yaml migrate up
   {{dev-kuma-cp}} -c koyeb/samples/cp-global.yaml run
@@ -82,20 +46,21 @@ cp-par1: _build-cp
   {{kuma-cp}} -c koyeb/samples/cp-par1.yaml migrate up
   {{dev-kuma-cp}} -c koyeb/samples/cp-par1.yaml run
 
-#  # custom ports for cp-global
-#  KUMA_API_SERVER_HTTP_PORT=4281 \
-#    KUMA_DIAGNOSTICS_SERVER_PORT=4280 \
-#    KUMA_API_SERVER_HTTPS_PORT=4249 \
-#    KUMA_DP_SERVER_PORT=4245 \
-#    KUMA_XDS_SERVER_GRPC_PORT=4245 \
-#    TRACING_URL=http://localhost:14268/api/traces \
-#  {{artifacts}}/kuma-cp/kuma-cp run --log-level info -c koyeb/samples/config-global.yaml
-#
-#
-#_init-default:
-#  cat ./koyeb/samples/default-mesh.yaml | {{artifacts}}/kumactl/kumactl apply --config-file ./koyeb/samples/kumactl-global-config.yaml -f -
+_create_secret name mesh path:
+  export SECRET_NAME={{name}} ; \
+  export SECRET_MESH={{mesh}} ; \
+  export SECRET_BASE64_ENCODED=$(cat {{path}} | base64) ; \
+  cat koyeb/samples/secret-template.yaml | envsubst | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
 
-ingress: _build-dp
+_inject_ca mesh:
+  @just _create_secret manually-generated-ca-cert {{mesh}} ./build/koyeb/certs/crt.pem
+  @just _create_secret manually-generated-ca-key {{mesh}} ./build/koyeb/certs/key.pem
+
+_init-default: _generate-cert (_inject_ca "default")
+  # Upsert default mesh
+  cat koyeb/samples/default-mesh.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+
+ingress: _build-dp _init-default
   {{kumactl}} generate zone-token --zone=par1 --valid-for 720h --scope ingress > /tmp/dp-token-ingress
   {{dev-kuma-dp}} run \
     --proxy-type=ingress \
@@ -108,7 +73,7 @@ ingress: _build-dp
 #  {{artifacts}}/kumactl/kumactl generate zone-ingress-token --zone par1  > /tmp/dp-token-glb
 #  {{artifacts}}/kuma-dp/kuma-dp run --dataplane-token-file /tmp/dp-token-glb --dns-coredns-config-template-path ./koyeb/samples/Corefile --dns-coredns-port 10053 --dns-envoy-port 10050 --log-level info --cp-address https://localhost:5678 --ca-cert-file ./build/koyeb/tls-cert/ca.pem --admin-port 4243 -d ./koyeb/samples/ingress-glb.yaml  --proxy-type ingress
 
-igw: _build-dp
+igw: _build-dp _init-default
   cat koyeb/samples/mesh-gateway-par1.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
 
   {{kumactl}} generate dataplane-token -m default --valid-for 720h --config-file koyeb/samples/kumactl-configs/par1-cp.yaml > /tmp/igw-par1-token
@@ -172,6 +137,11 @@ dp-container2:
   docker run -p 9941:5678 hashicorp/http-echo -text="ERROR!! I'm a leftover container for a service. I do not have the right koyeb.com/global-deployment tag, hence I should not receive any request!"
 
 dp dp_name="dp" mesh="abc": _build-dp
+  @just _inject_ca {{mesh}}
+
+  # Upsert default mesh
+  cat koyeb/samples/default-mesh.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+
   # Upsert abc mesh
   cat ./koyeb/samples/{{mesh}}-mesh.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
   # Upsert abc Virtual Outbound
