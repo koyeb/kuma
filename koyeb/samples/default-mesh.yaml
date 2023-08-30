@@ -1,5 +1,5 @@
 type: Mesh
-name: abc
+name: default
 mtls:
   enabledBackend: ca-inline
   backends:
