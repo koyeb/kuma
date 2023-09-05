@@ -3,12 +3,16 @@ package sync
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
+	"github.com/kumahq/kuma/pkg/core/plugins"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 	core_store "github.com/kumahq/kuma/pkg/core/resources/store"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	"github.com/kumahq/kuma/pkg/xds/envoy"
+	"github.com/kumahq/kuma/pkg/xds/template"
 )
 
 type IngressGatewayProxyBuilder struct {
@@ -58,6 +62,11 @@ func (p *IngressGatewayProxyBuilder) Build(
 
 	secretsTracker := envoy.NewSecretsTracker(meshName, allMeshNames)
 
+	matchedPolicies, err := p.matchPolicies(meshContext, dp)
+	if err != nil {
+		return nil, err
+	}
+
 	proxy := &core_xds.Proxy{
 		Id:               core_xds.FromResourceKey(key),
 		APIVersion:       p.apiVersion,
@@ -65,6 +74,47 @@ func (p *IngressGatewayProxyBuilder) Build(
 		ZoneIngressProxy: p.buildZoneIngressProxy(zoneIngress, aggregatedMeshCtxs),
 		SecretsTracker:   secretsTracker,
 		Metadata:         &core_xds.DataplaneMetadata{},
+		Policies:         *matchedPolicies,
 	}
 	return proxy, nil
+}
+
+// NOTE(nicoche) This is copy/pasted from DataplaneProxyBuilder.matchPolicies
+// We need this for e.g the IngressGateway because we want the Proxy object to contain
+// the "plugin" policies. "plugin" policies are a newer style of policies like `MeshTrace`
+// which are dynamic
+func (p *IngressGatewayProxyBuilder) matchPolicies(meshContext xds_context.MeshContext, dataplane *core_mesh.DataplaneResource) (*core_xds.MatchedPolicies, error) {
+	// additionalInbounds, err := manager_dataplane.AdditionalInbounds(dataplane, meshContext.Resource)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "could not fetch additional inbounds")
+	// }
+	// inbounds := append(dataplane.Spec.GetNetworking().GetInbound(), additionalInbounds...)
+
+	resources := meshContext.Resources
+	// ratelimits := ratelimits.BuildRateLimitMap(dataplane, inbounds, resources.RateLimits().Items)
+	matchedPolicies := &core_xds.MatchedPolicies{
+		// TrafficPermissions: permissions.BuildTrafficPermissionMap(dataplane, inbounds, resources.TrafficPermissions().Items),
+		// TrafficLogs:        logs.BuildTrafficLogMap(dataplane, resources.TrafficLogs().Items),
+		// HealthChecks:       xds_topology.BuildHealthCheckMap(dataplane, outboundSelectors, resources.HealthChecks().Items),
+		// CircuitBreakers:    xds_topology.BuildCircuitBreakerMap(dataplane, outboundSelectors, resources.CircuitBreakers().Items),
+		// TrafficTrace:       xds_topology.SelectTrafficTrace(dataplane, resources.TrafficTraces().Items),
+		// FaultInjections:    faultinjections.BuildFaultInjectionMap(dataplane, inbounds, resources.FaultInjections().Items),
+		// Retries:            xds_topology.BuildRetryMap(dataplane, resources.Retries().Items, outboundSelectors),
+		// Timeouts:           xds_topology.BuildTimeoutMap(dataplane, resources.Timeouts().Items),
+		// RateLimitsInbound:  ratelimits.Inbound,
+		// RateLimitsOutbound: ratelimits.Outbound,
+		ProxyTemplate: template.SelectProxyTemplate(dataplane, resources.ProxyTemplates().Items),
+		Dynamic:       core_xds.PluginOriginatedPolicies{},
+	}
+	for name, p := range plugins.Plugins().PolicyPlugins() {
+		res, err := p.MatchedPolicies(dataplane, resources)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not apply policy plugin %s", name)
+		}
+		if res.Type == "" {
+			return nil, errors.Wrapf(err, "matched policy didn't set type for policy plugin %s", name)
+		}
+		matchedPolicies.Dynamic[res.Type] = res
+	}
+	return matchedPolicies, nil
 }

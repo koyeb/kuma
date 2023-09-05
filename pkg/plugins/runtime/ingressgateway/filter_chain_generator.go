@@ -40,15 +40,6 @@ const (
 	DefaultIdleTimeout           = 10 * time.Minute
 )
 
-// TODO(nicoche): Move this into an actual kuma CRD
-// var defaultTracingBackend = mesh_proto.TracingBackend{
-// 	Name: "jaeger-collector",
-// 	Type: mesh_proto.TracingZipkinType,
-// 	Conf: util_proto.MustToStruct(&mesh_proto.ZipkinTracingBackendConfig{
-// 		Url: "http://127.0.0.1:9411/",
-// 	}),
-// }
-
 type HTTPFilterChainGenerator struct{}
 
 func (g *HTTPFilterChainGenerator) Generate(xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error) {
@@ -119,14 +110,6 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 		// is a no-op unless we later add a per-route configuration.
 		envoy_listeners.RateLimit([]*core_mesh.RateLimitResource{nil}),
 		envoy_listeners.DefaultCompressorFilter(),
-		// TODO(nicoche) add request header here
-		// []listeners_v3.RequestHeaderCustomTag{
-		// {Name: "http.header.x-koyeb-route", HeaderName: "x-koyeb-route"},
-		// {Name: "http.header.host", HeaderName: "host"}
-		//}
-		// TODO(nicoche): add an actual TrafficTrace resource to GetTracingBackend(proxy.Policies.TrafficTrace)
-		// envoy_listeners.Tracing(xdsCtx.Mesh.GetTracingBackend(proxy.Policies.TrafficTrace), service, envoy_common.TrafficDirectionUnspecified, ""),
-		// envoy_listeners.Tracing(&defaultTracingBackend, service, envoy_common.TrafficDirectionUnspecified, ""),
 		// In mesh proxies, the access log is configured on the outbound
 		// listener, which is why we index the Logs slice by destination
 		// service name.  A Gateway listener by definition forwards traffic

@@ -26,7 +26,7 @@ stop-db:
   docker stop kuma-db
 
 # This generates a CA cert and its key. Those are expected to be loaded into each mesh
-_generate-cert:
+generate-ca-cert:
   mkdir -p {{certs-path}}
   echo "\n[req]\ndistinguished_name=dn\n[ dn ]\n[ ext ]\nbasicConstraints=CA:TRUE,pathlen:0\nkeyUsage=keyCertSign\n" > /tmp/ca_config
   openssl req -config /tmp/ca_config -new -newkey rsa:2048 -nodes -subj "/CN=Hello" -x509 -extensions ext -keyout {{certs-path}}/key.pem -out {{certs-path}}/crt.pem
@@ -56,9 +56,10 @@ _inject_ca mesh:
   @just _create_secret manually-generated-ca-cert {{mesh}} ./build/koyeb/certs/crt.pem
   @just _create_secret manually-generated-ca-key {{mesh}} ./build/koyeb/certs/key.pem
 
-_init-default: _generate-cert (_inject_ca "default")
+_init-default: (_inject_ca "default")
   # Upsert default mesh
   cat koyeb/samples/default-mesh.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+  cat koyeb/samples/default-meshtrace.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
 
 ingress: _build-dp _init-default
   {{kumactl}} generate zone-token --zone=par1 --valid-for 720h --scope ingress > /tmp/dp-token-ingress
@@ -74,7 +75,7 @@ ingress: _build-dp _init-default
 #  {{artifacts}}/kuma-dp/kuma-dp run --dataplane-token-file /tmp/dp-token-glb --dns-coredns-config-template-path ./koyeb/samples/Corefile --dns-coredns-port 10053 --dns-envoy-port 10050 --log-level info --cp-address https://localhost:5678 --ca-cert-file ./build/koyeb/tls-cert/ca.pem --admin-port 4243 -d ./koyeb/samples/ingress-glb.yaml  --proxy-type ingress
 
 igw: _build-dp _init-default
-  cat koyeb/samples/mesh-gateway-par1.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+  cat koyeb/samples/default-meshgateway.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
 
   {{kumactl}} generate dataplane-token -m default --valid-for 720h --config-file koyeb/samples/kumactl-configs/par1-cp.yaml > /tmp/igw-par1-token
   {{dev-kuma-dp}} run --dataplane-token-file /tmp/igw-par1-token --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/ingress-gateway-par1.yaml
