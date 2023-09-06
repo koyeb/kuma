@@ -1,7 +1,6 @@
 package ingressgateway
 
 import (
-	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	envoy_listeners "github.com/kumahq/kuma/pkg/xds/envoy/listeners"
 	envoy_names "github.com/kumahq/kuma/pkg/xds/envoy/names"
@@ -21,14 +20,19 @@ type RuntimeResoureLimitListener struct {
 	ConnectionLimit uint32
 }
 
-// TODO(nicoche) take GatewayListenerInfo as input, maybe
-func GenerateListener(proxy *core_xds.Proxy) (*envoy_listeners.ListenerBuilder, *RuntimeResoureLimitListener) {
-	// TODO(nicoche) change, it comes from meshGateway
-
-	var port uint32 = 5601
-
-	protocol := mesh_proto.MeshGateway_Listener_HTTP
-	address := proxy.Dataplane.Spec.GetNetworking().Address
+func GenerateListener(info GatewayListenerInfo) (*envoy_listeners.ListenerBuilder, *RuntimeResoureLimitListener) {
+	// TODO(jpeach) what we really need to do here is to
+	// generate a HTTP filter chain for each
+	// host on the same HTTPConnectionManager. Each HTTP filter
+	// chain should be wrapped in a matcher that selects it for
+	// only the host's domain name. This will give us consistent
+	// per-host HTTP filter chains for both HTTP and HTTPS
+	// listeners.
+	//
+	// https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/advanced/matching/matching_api
+	port := info.Listener.Port
+	protocol := info.Listener.Protocol
+	address := info.Proxy.Dataplane.Spec.GetNetworking().Address
 
 	log.V(1).Info("generating listener",
 		"address", address,
@@ -36,13 +40,20 @@ func GenerateListener(proxy *core_xds.Proxy) (*envoy_listeners.ListenerBuilder, 
 		"protocol", protocol,
 	)
 
-	// TODO(nicoche): whatever -> from meshGateway
-	name := envoy_names.GetGatewayListenerName("whatever", protocol.String(), port)
-	// NOTE(nicoche_: Maybe use MeshGateway resources here instead of no limit
+	name := envoy_names.GetGatewayListenerName(info.Gateway.Meta.GetName(), protocol.String(), port)
+
 	var limits *RuntimeResoureLimitListener
+	if resources := info.Listener.Resources; resources != nil {
+		if resources.ConnectionLimit > 0 {
+			limits = &RuntimeResoureLimitListener{
+				Name:            name,
+				ConnectionLimit: resources.ConnectionLimit,
+			}
+		}
+	}
 
 	return envoy_listeners.NewInboundListenerBuilder(
-		proxy.APIVersion,
+		info.Proxy.APIVersion,
 		address,
 		port,
 		core_xds.SocketAddressProtocolTCP,

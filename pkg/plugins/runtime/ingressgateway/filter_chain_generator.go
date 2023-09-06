@@ -15,7 +15,6 @@ import (
 	envoy_common "github.com/kumahq/kuma/pkg/xds/envoy"
 	envoy_listeners "github.com/kumahq/kuma/pkg/xds/envoy/listeners"
 	envoy_listeners_v3 "github.com/kumahq/kuma/pkg/xds/envoy/listeners/v3"
-	envoy_names "github.com/kumahq/kuma/pkg/xds/envoy/names"
 )
 
 // TODO(jpeach) It's a lot to ask operators to tune these defaults,
@@ -42,19 +41,19 @@ const (
 
 type HTTPFilterChainGenerator struct{}
 
-func (g *HTTPFilterChainGenerator) Generate(xdsCtx xds_context.Context, proxy *core_xds.Proxy) (*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error) {
+func (g *HTTPFilterChainGenerator) Generate(xdsCtx xds_context.Context, info GatewayListenerInfo) (*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error) {
 	log.V(1).Info("generating filter chain", "protocol", "HTTP")
 
 	// HTTP listeners get a single filter chain for all hostnames. So
 	// if there's already a filter chain, we have nothing to do.
-	return nil, []*envoy_listeners.FilterChainBuilder{newHTTPFilterChain(xdsCtx, proxy)}, nil
+	return nil, []*envoy_listeners.FilterChainBuilder{newHTTPFilterChain(xdsCtx, info)}, nil
 }
 
-func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envoy_listeners.FilterChainBuilder {
+func newHTTPFilterChain(xdsCtx xds_context.Context, info GatewayListenerInfo) *envoy_listeners.FilterChainBuilder {
 	// A Gateway is a single service across all listeners.
-	service := proxy.Dataplane.Spec.GetIdentifyingService()
+	service := info.Proxy.Dataplane.Spec.GetIdentifyingService()
 
-	builder := envoy_listeners.NewFilterChainBuilder(proxy.APIVersion, envoy_common.AnonymousResource).Configure(
+	builder := envoy_listeners.NewFilterChainBuilder(info.Proxy.APIVersion, envoy_common.AnonymousResource).Configure(
 		// Note that even for HTTPS cases, we don't enable client certificate
 		// forwarding. This is because this particular configurer will enable
 		// forwarding for the client certificate URI, which is OK for SPIFFE-
@@ -66,8 +65,8 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 		// is updated, the listener is reloaded, which resets all inbound connections.
 		// We want to keep those connections live because they could be long-lived (e.g. websockets)
 
-		// NOTE(nicoche: Use the correct name from MeshGateway)
-		envoy_listeners.HttpDynamicRoute(envoy_names.GetGatewayListenerName("whatever", mesh_proto.MeshGateway_Listener_HTTP.String(), uint32(5601))),
+		envoy_listeners.HttpDynamicRoute(info.Listener.ResourceName),
+		// TODO(nicoche)
 		// envoy_listeners.ServerSideMTLSPublicIngress(mesh),
 		// envoy_listeners.HttpWebsocketConnectionManager(inboundListenerName, true),
 		// envoy_listeners.MaxConnectAttempts(&defaultRetryPolicy),
@@ -122,8 +121,8 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, proxy *core_xds.Proxy) *envo
 			envoy.TrafficDirectionInbound,
 			service,                // Source service is the gateway service.
 			mesh_proto.MatchAllTag, // Destination service could be anywhere, depending on the routes.
-			xdsCtx.Mesh.GetLoggingBackend(proxy.Policies.TrafficLogs[core_mesh.PassThroughService]),
-			proxy,
+			xdsCtx.Mesh.GetLoggingBackend(info.Proxy.Policies.TrafficLogs[core_mesh.PassThroughService]),
+			info.Proxy,
 		),
 	)
 	builder.AddConfigurer(&envoy_listeners_v3.HTTPRouterStartChildSpanRouter{})
