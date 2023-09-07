@@ -41,12 +41,32 @@ const (
 
 type HTTPFilterChainGenerator struct{}
 
-func (g *HTTPFilterChainGenerator) Generate(xdsCtx xds_context.Context, info GatewayListenerInfo) (*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error) {
+func (g *HTTPFilterChainGenerator) Generate(
+	xdsCtx xds_context.Context, info GatewayListenerInfo,
+) (
+	*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error,
+) {
 	log.V(1).Info("generating filter chain", "protocol", "HTTP")
 
 	// HTTP listeners get a single filter chain for all hostnames. So
 	// if there's already a filter chain, we have nothing to do.
 	return nil, []*envoy_listeners.FilterChainBuilder{newHTTPFilterChain(xdsCtx, info)}, nil
+}
+
+// HTTPSFilterChainGenerator generates a filter chain for an HTTPS listener.
+type HTTPSFilterChainGenerator struct{}
+
+func (g *HTTPSFilterChainGenerator) Generate(
+	xdsCtx xds_context.Context, info GatewayListenerInfo,
+) (
+	*core_xds.ResourceSet, []*envoy_listeners.FilterChainBuilder, error,
+) {
+	builder := newHTTPFilterChain(xdsCtx, info)
+	builder.Configure(
+		envoy_listeners.ServerSideMTLS(xdsCtx.Mesh.Resource, info.Proxy.SecretsTracker),
+	)
+
+	return nil, []*envoy_listeners.FilterChainBuilder{builder}, nil
 }
 
 func newHTTPFilterChain(xdsCtx xds_context.Context, info GatewayListenerInfo) *envoy_listeners.FilterChainBuilder {

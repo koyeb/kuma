@@ -49,9 +49,18 @@ type GatewayListenerInfo struct {
 
 // Generator generates xDS resources for an entire Ingress Gateway.
 type Generator struct {
-	Zone                     string
-	HTTPFilterChainGenerator FilterChainGenerator
-	ClusterGenerator         *ClusterGenerator
+	Zone                  string
+	FilterChainGenerators FilterChainGenerators
+	ClusterGenerator      *ClusterGenerator
+}
+
+type FilterChainGenerators struct {
+	FilterChainGenerators map[mesh_proto.MeshGateway_Listener_Protocol]FilterChainGenerator
+}
+
+func (g *FilterChainGenerators) For(ctx xds_context.Context, info GatewayListenerInfo) FilterChainGenerator {
+	gen := g.FilterChainGenerators[info.Listener.Protocol]
+	return gen
 }
 
 type Route struct {
@@ -195,12 +204,17 @@ func (g Generator) generateRTDS(limits []RuntimeResoureLimitListener) *core_xds.
 	return res
 }
 
-func (g Generator) generateLDS(xdsCtx xds_context.Context, listenerInfo GatewayListenerInfo) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
+func (g Generator) generateLDS(xdsCtx xds_context.Context, info GatewayListenerInfo) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
 	resources := core_xds.NewResourceSet()
 
-	listenerBuilder, limit := GenerateListener(listenerInfo)
+	listenerBuilder, limit := GenerateListener(info)
 
-	res, filterChainBuilders, err := g.HTTPFilterChainGenerator.Generate(xdsCtx, listenerInfo)
+	protocol := info.Listener.Protocol
+	if protocol != mesh_proto.MeshGateway_Listener_HTTP && protocol != mesh_proto.MeshGateway_Listener_HTTPS {
+		return nil, nil, errors.New("only HTTP and HTTPS are supported by Koyeb Ingress Gateway")
+	}
+
+	res, filterChainBuilders, err := g.FilterChainGenerators.FilterChainGenerators[protocol].Generate(xdsCtx, info)
 	if err != nil {
 		return nil, limit, err
 	}

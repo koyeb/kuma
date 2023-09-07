@@ -9,3 +9,8 @@ conf:
   - port: 5601
     protocol: HTTP
     hostname: "*"
+  - port: 5602
+    protocol: HTTPS
+    hostname: "*"
+    tls:
+      mode: "KOYEB_IN_MESH_MTLS"

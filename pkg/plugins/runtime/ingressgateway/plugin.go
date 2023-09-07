@@ -3,6 +3,7 @@ package ingressgateway
 import (
 	"errors"
 
+	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	config_core "github.com/kumahq/kuma/pkg/config/core"
 	"github.com/kumahq/kuma/pkg/core"
 	core_plugins "github.com/kumahq/kuma/pkg/core/plugins"
@@ -58,9 +59,14 @@ func (p *plugin) Order() int {
 
 func NewGenerator(zone string) Generator {
 	return Generator{
-		Zone:                     zone,
-		HTTPFilterChainGenerator: &HTTPFilterChainGenerator{},
-		ClusterGenerator:         &ClusterGenerator{},
+		Zone: zone,
+		FilterChainGenerators: FilterChainGenerators{
+			FilterChainGenerators: map[mesh_proto.MeshGateway_Listener_Protocol]FilterChainGenerator{
+				mesh_proto.MeshGateway_Listener_HTTP:  &HTTPFilterChainGenerator{},
+				mesh_proto.MeshGateway_Listener_HTTPS: &HTTPSFilterChainGenerator{},
+			},
+		},
+		ClusterGenerator: &ClusterGenerator{},
 	}
 }
 
