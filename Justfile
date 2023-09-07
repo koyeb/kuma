@@ -117,7 +117,19 @@ test-grpc:
 #test-ws-python:
 #  python koyeb/samples/websocket-client.py
 #
-#test-http2:
+test-http2:
+  # Check that the target container is live
+  curl http://localhost:8002/health -s --fail --output /dev/null
+  curl http://localhost:8002/health -s --http2 -s --fail  --output /dev/null
+  curl http://localhost:8002/health --http2-prior-knowledge -s --fail --output /dev/null
+  @echo
+
+  # Check that the IGW routes correctly
+  curl http://localhost:5601/health -H "x-koyeb-route: dp-8002_prod" -s --fail --output /dev/null
+  curl http://localhost:5601/health -H "x-koyeb-route: dp-8002_prod" --http2 -s --fail --output /dev/null
+  curl http://localhost:5601/health -H "x-koyeb-route: dp-8002_prod" --http2-prior-knowledge -s --fail --output /dev/null
+  @echo
+
 #  curl http://localhost:8002/health -s --fail --output /dev/null
 #  curl http://localhost:8002/health --http2 -s --fail  --output /dev/null
 #  curl http://localhost:8002/health --http2-prior-knowledge -s --fail --output /dev/null
