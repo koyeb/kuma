@@ -119,22 +119,31 @@ igw: _build-dp _init-default
 #  curl http://localhost:5600/health -H "host: http2.local.koyeb.app" -s --fail --output /dev/null
 #  curl http://localhost:5600/health -H "host: http2.local.koyeb.app" --http2 -s --fail --output /dev/null
 #  curl http://localhost:5600/health -H "host: http2.local.koyeb.app" --http2-prior-knowledge -s --fail --output /dev/null
-#
-#test-http:
-#  curl http://localhost:8001/health -s --fail --output /dev/null
+
+test-http:
+  # Check that the target container is live
+  curl http://localhost:8001/health -s --fail --output /dev/null
+  @echo
+
+  # Check that the IGW is live
+  curl http://localhost:5601/health
+  @echo
+
+  # Check that the IGW is live in HTTPs
+  curl -k https://localhost:5602/health --key {{client-certs-path}}/client.key --cert {{client-certs-path}}/final.pem --cacert {{certs-path}}/crt.pem
+  @echo
+
+  # Check that the IGW routing works in HTTP
+  curl -k http://localhost:5601 -H "x-koyeb-route: dp-8001_prod" -s --fail --output /dev/null
+  @echo
+
+  # Check that the IGW routing works in HTTPS
+  curl -k https://localhost:5602 --key {{client-certs-path}}/client.key --cert {{client-certs-path}}/final.pem --cacert {{certs-path}}/crt.pem -H "x-koyeb-route: dp-8001_prod" -s --fail --output /dev/null
+  @echo
+
 #  curl http://localhost:5600/health
 #  @echo
 #  curl http://127.0.0.1:5600/health
-#  @echo
-#  curl https://localhost:5601/health --key ./build/koyeb/gateway-cert/gateway-key.pem --cert ./build/koyeb/gateway-cert/gateway.pem --cacert ./build/koyeb/gateway-cert/ca.pem
-#  @echo
-#  curl https://127.0.0.1:5601/health --key ./build/koyeb/gateway-cert/gateway-key.pem --cert ./build/koyeb/gateway-cert/gateway.pem --cacert ./build/koyeb/gateway-cert/ca.pem
-#  @echo
-#  curl https://localhost:5601/health --key ./build/koyeb/gateway-client/cert-key.pem --cert ./build/koyeb/gateway-client/cert.pem --cacert ./build/koyeb/gateway-client/ca.pem
-#  @echo
-#  curl https://127.0.0.1:5601/health --key ./build/koyeb/gateway-client/cert-key.pem --cert ./build/koyeb/gateway-client/cert.pem --cacert ./build/koyeb/gateway-client/ca.pem
-#  @echo
-#  curl https://localhost:5601 --key ./build/koyeb/gateway-cert/tls-key.pem --cert ./build/koyeb/gateway-cert/tls.pem --cacert ./build/koyeb/gateway-cert/ca.pem -H "x-koyeb-route: dp-8001_prod" -s --fail --output /dev/null
 #  curl http://localhost:5600 -H "host: http.local.koyeb.app" -s --fail --output /dev/null
 #  curl http://localhost:5600 -H "host: http.local.koyeb.app" --http2-prior-knowledge -s --fail --output /dev/null
 #
