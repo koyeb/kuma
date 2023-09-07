@@ -87,8 +87,6 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, info GatewayListenerInfo) *e
 
 		envoy_listeners.HttpDynamicRoute(info.Listener.ResourceName),
 		// TODO(nicoche)
-		// envoy_listeners.ServerSideMTLSPublicIngress(mesh),
-		// envoy_listeners.HttpWebsocketConnectionManager(inboundListenerName, true),
 		// envoy_listeners.MaxConnectAttempts(&defaultRetryPolicy),
 		// envoy_listeners.LocalReplyConfig(
 		//	mapper503To502,
@@ -119,6 +117,10 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, info GatewayListenerInfo) *e
 					InitialConnectionWindowSize: util_proto.UInt32(DefaultInitialConnectionWindowSize),
 					AllowConnect:                true,
 				}
+				hcm.UpgradeConfigs = append(hcm.UpgradeConfigs, &envoy_hcm.HttpConnectionManager_UpgradeConfig{
+					UpgradeType: "websocket",
+					Enabled:     util_proto.Bool(true),
+				})
 			}),
 		),
 	)

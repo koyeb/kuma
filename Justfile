@@ -83,7 +83,7 @@ ingress: _build-dp _init-default
     --dataplane-file=koyeb/samples/ingress-par1.yaml
 
 
-#glb: gen-certs _build-dp _init-default
+#glb: _build-dp _init-default
 #  {{artifacts}}/kumactl/kumactl generate zone-ingress-token --zone par1  > /tmp/dp-token-glb
 #  {{artifacts}}/kuma-dp/kuma-dp run --dataplane-token-file /tmp/dp-token-glb --dns-coredns-config-template-path ./koyeb/samples/Corefile --dns-coredns-port 10053 --dns-envoy-port 10050 --log-level info --cp-address https://localhost:5678 --ca-cert-file ./build/koyeb/tls-cert/ca.pem --admin-port 4243 -d ./koyeb/samples/ingress-glb.yaml  --proxy-type ingress
 
@@ -104,19 +104,10 @@ test-grpc:
 
 #  grpcurl -authority grpc.local.koyeb.app -plaintext -servername grpc.local.koyeb.app localhost:5600 list
 #  grpcurl -authority grpc.local.koyeb.app -plaintext -servername grpc.local.koyeb.app localhost:5600 main.HelloWorld/Greeting
-#
-#test-ws-websocat:
-#  echo "hello" | websocat -t - ws-ll-c:http-request:tcp:127.0.0.1:5600  \
-#    --request-header 'Host: http.local.koyeb.app' \
-#    --request-header 'Upgrade: websocket' \
-#    --request-header 'Sec-WebSocket-Key: mYUkMl6bemnLatx/g7ySfw==' \
-#    --request-header 'Sec-WebSocket-Version: 13' \
-#    --request-header 'Connection: Upgrade' \
-#    --request-uri=/ -1
-#
-#test-ws-python:
-#  python koyeb/samples/websocket-client.py
-#
+
+test-ws:
+  echo "hello" | websocat  ws://127.0.0.1:5601 -H 'x-koyeb-route: dp-8011_prod'
+
 test-http2:
   # Check that the target container is live
   curl http://localhost:8002/health -s --fail --output /dev/null
@@ -165,16 +156,16 @@ test-http:
 #  curl http://localhost:5600 -H "host: http.local.koyeb.app" --http2-prior-knowledge -s --fail --output /dev/null
 #
 #test: test-http test-http2 test-grpc
-#
-#dp-container-ws:
-#  docker run -ti -p 8001:8080 jmalloc/echo-server
+
+dp-container-ws:
+  docker run -ti -p 8011:8080 jmalloc/echo-server
 
 dp-container1:
   docker run -ti -p 8001-8010:8001-8010 kalmhq/echoserver:latest
 
 dp-container2:
   # This container should never receive any request. It should be ensured by abc's TrafficRoute policy
-  docker run -p 9941:5678 hashicorp/http-echo -text="ERROR!! I'm a leftover container for a service. I do not have the right koyeb.com/global-deployment tag, hence I should not receive any request!"
+  docker run -p 8012:5678 hashicorp/http-echo -text="ERROR!! I'm a leftover container for a service. I do not have the right koyeb.com/global-deployment tag, hence I should not receive any request!"
 
 dp dp_name="dp" mesh="abc": _build-dp
   @just _inject_ca {{mesh}}

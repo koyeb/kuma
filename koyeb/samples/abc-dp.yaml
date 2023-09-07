@@ -18,18 +18,6 @@ networking:
         koyeb.com/service-name: dp-8001
         koyeb.com/global-deployment: "active"
         kuma.io/protocol: http
-    - port: 9951
-      servicePort: 9941
-      serviceProbe:
-        tcp: {}
-      tags:
-        kuma.io/service: dp-8001
-        koyeb.com/app-name: mec
-        koyeb.com/region: par
-        koyeb.com/port: "9941"
-        koyeb.com/service-name: dp-8001
-        koyeb.com/global-deployment: "not-active"
-        kuma.io/protocol: http
     - port: 9932
       servicePort: 8002
       serviceProbe:
@@ -66,3 +54,29 @@ networking:
         koyeb.com/service-name: dp-8006
         koyeb.com/global-deployment: "active"
         kuma.io/protocol: tcp
+    - port: 9941
+      servicePort: 8011
+      serviceProbe:
+        tcp: {}
+      tags:
+        kuma.io/service: dp-8011
+        koyeb.com/app-name: mec
+        koyeb.com/region: par
+        koyeb.com/port: "8011"
+        koyeb.com/service-name: dp-8011
+        koyeb.com/global-deployment: "active"
+        kuma.io/protocol: http
+    - port: 9942
+      servicePort: 8012
+      serviceProbe:
+        tcp: {}
+      tags:
+        # This container should never receive any request.
+        # It should be ensured by the mesh's TrafficRoute policy
+        kuma.io/service: dp-8001
+        koyeb.com/app-name: mec
+        koyeb.com/region: par
+        koyeb.com/port: "8012"
+        koyeb.com/service-name: dp-8001
+        koyeb.com/global-deployment: "not-active"
+        kuma.io/protocol: http
