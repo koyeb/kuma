@@ -12,6 +12,7 @@ dev-kuma-cp := if use_debugger == "yes" { "dlv debug app/kuma-cp/main.go --" } e
 dev-kuma-dp := if use_debugger == "yes" { "dlv debug app/kuma-dp/main.go --" } else { kuma-dp }
 
 certs-path := "./build/koyeb/certs"
+client-certs-path := "./build/koyeb/client-certs"
 
 default:
   @just --list
@@ -30,6 +31,18 @@ generate-ca-cert:
   mkdir -p {{certs-path}}
   echo "\n[req]\ndistinguished_name=dn\n[ dn ]\n[ ext ]\nbasicConstraints=CA:TRUE,pathlen:0\nkeyUsage=keyCertSign\n" > /tmp/ca_config
   openssl req -config /tmp/ca_config -new -newkey rsa:2048 -nodes -subj "/CN=Hello" -x509 -extensions ext -keyout {{certs-path}}/key.pem -out {{certs-path}}/crt.pem
+
+# NOTE: the verification of the IGW server certif does not seem to work super well though
+generate-client-certs:
+  mkdir -p {{client-certs-path}}
+  openssl genrsa -out {{client-certs-path}}/client.key 2048
+  openssl req -new -sha256 -key {{client-certs-path}}/client.key -subj "/CN=Hello" -out {{client-certs-path}}/client.csr
+  openssl x509 -req -in {{client-certs-path}}/client.csr -CA {{certs-path}}/crt.pem -CAkey {{certs-path}}/key.pem -CAcreateserial -extfile ./koyeb/samples/client-cert-extensions.ext -out {{client-certs-path}}/client.crt -days 5000 -sha256
+  openssl x509 -in {{client-certs-path}}/client.crt -out {{client-certs-path}}/client.pem -text
+  openssl x509 -in {{certs-path}}/crt.pem -out {{client-certs-path}}/client-ca.pem -text
+  openssl rsa -in {{client-certs-path}}/client.key -text > {{client-certs-path}}/client-key.pem
+  openssl x509 -req -in {{client-certs-path}}/client.csr -CA {{certs-path}}/crt.pem -CAkey {{certs-path}}/key.pem -CAcreateserial -extfile ./koyeb/samples/client-cert-extensions-with-spiffe.ext -out {{client-certs-path}}/final.crt -days 5000 -sha256
+  openssl x509 -in {{client-certs-path}}/client.crt -out {{client-certs-path}}/final.pem -text
 
 _build-cp:
   make build/kuma-cp
