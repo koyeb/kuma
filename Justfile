@@ -93,10 +93,15 @@ igw: _build-dp _init-default
   {{kumactl}} generate dataplane-token -m default --valid-for 720h --config-file koyeb/samples/kumactl-configs/par1-cp.yaml > /tmp/igw-par1-token
   {{dev-kuma-dp}} run --dataplane-token-file /tmp/igw-par1-token --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/ingress-gateway-par1.yaml
 
-#test-grpc:
-#  grpcurl --plaintext localhost:8004 main.HelloWorld/Greeting
-#  # evans required for advance tls config for igw
-#  #echo '{}' | evans --verbose --host localhost --port 5601 --tls --certkey ./build/koyeb/gateway-client/cert-key.pem --cert ./build/koyeb/gateway-client/cert.pem --cacert ./build/koyeb/gateway-client/ca.pem -r cli --header "x-koyeb-route=dp-8004_prod" call main.HelloWorld.Greeting
+test-grpc:
+  # Check that the target container is live
+  grpcurl --plaintext localhost:8004 main.HelloWorld/Greeting
+  @echo
+
+  # Check that the IGW routes correctly
+  grpcurl --plaintext -H "X-Koyeb-Route: dp-8004_prod" localhost:5601 main.HelloWorld/Greeting
+  @echo
+
 #  grpcurl -authority grpc.local.koyeb.app -plaintext -servername grpc.local.koyeb.app localhost:5600 list
 #  grpcurl -authority grpc.local.koyeb.app -plaintext -servername grpc.local.koyeb.app localhost:5600 main.HelloWorld/Greeting
 #

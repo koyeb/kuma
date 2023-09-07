@@ -81,7 +81,7 @@ func generateEdsCluster(
 		clusters.LbSubset(tagKeySlice),
 		clusters.CrossMeshClientSideMTLS(proxy.SecretsTracker, sourceMesh, targetMesh, service, true, tagSlice),
 		clusters.ConnectionBufferLimit(DefaultConnectionBuffer),
-		// clusters.HttpDownstreamProtocolOptions(),
+		clusters.HttpDownstreamProtocolOptions(),
 	)
 
 	r, err := buildClusterResource(clusterBuilder)
