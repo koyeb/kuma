@@ -149,6 +149,8 @@ dp dp_name="dp" mesh="abc": _build-dp
   cat ./koyeb/samples/abc-virtual-outbound.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
   # Upsert abc TrafficRoute
   cat ./koyeb/samples/abc-traffic-route.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
+  # Upsert abc MeshTrace
+  cat koyeb/samples/abc-meshtrace.yaml | {{kumactl}} apply --config-file koyeb/samples/kumactl-configs/global-cp.yaml -f -
 
   # Wait some time for the mesh to be propagated to the zonal CP...
   sleep 2
