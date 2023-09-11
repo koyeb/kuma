@@ -32,7 +32,16 @@ func PolicyMatches(resource core_model.Resource, dpp *core_mesh.DataplaneResourc
 // MatchedPolicies match policies using the standard matchers using targetRef (madr-005)
 func MatchedPolicies(rType core_model.ResourceType, dpp *core_mesh.DataplaneResource, resources xds_context.Resources) (core_xds.TypedMatchingPolicies, error) {
 	policies := resources.ListOrEmpty(rType)
+<<<<<<< HEAD
 	var warnings []string
+=======
+
+	var gateway *core_mesh.MeshGatewayResource
+	if dpp.Spec.IsBuiltinGateway() || dpp.Spec.IsKoyebIngressGateway() {
+		gateways := resources.Gateways()
+		gateway = xds_topology.SelectGateway(gateways.Items, dpp.Spec.Matches)
+	}
+>>>>>>> 6662659cd (Add IGW plugin)
 
 	matchedPoliciesByInbound := map[core_rules.InboundListener][]core_model.Resource{}
 	var dpPolicies []core_model.Resource

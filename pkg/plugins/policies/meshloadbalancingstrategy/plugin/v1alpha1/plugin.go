@@ -164,8 +164,12 @@ func (p plugin) configureGateway(
 	rs *core_xds.ResourceSet,
 	egressEnabled bool,
 ) error {
+<<<<<<< HEAD
 	gatewayListenerInfos := gateway_plugin.ExtractGatewayListeners(proxy)
 	if len(gatewayListenerInfos) == 0 {
+=======
+	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
+>>>>>>> 6662659cd (Add IGW plugin)
 		return nil
 	}
 

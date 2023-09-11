@@ -112,7 +112,19 @@ func applyToGateways(
 	gatewayClusters map[string]*envoy_cluster.Cluster,
 	proxy *core_xds.Proxy,
 ) error {
+<<<<<<< HEAD
 	for _, listenerInfo := range gateway.ExtractGatewayListeners(proxy) {
+=======
+	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
+		return nil
+	}
+	gatewayListenerInfos, err := gateway_plugin.GatewayListenerInfoFromProxy(context.TODO(), ctx.Mesh, proxy, ctx.ControlPlane.Zone)
+	if err != nil {
+		return err
+	}
+
+	for _, listenerInfo := range gatewayListenerInfos {
+>>>>>>> 6662659cd (Add IGW plugin)
 		for _, hostInfo := range listenerInfo.HostInfos {
 			destinations := gateway.RouteDestinationsMutable(hostInfo.Entries)
 			for _, dest := range destinations {

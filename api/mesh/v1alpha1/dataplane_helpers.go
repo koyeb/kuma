@@ -22,6 +22,7 @@ const (
 	// Mandatory tag that has a reserved meaning in Kuma.
 	ServiceTag     = "kuma.io/service"
 	ServiceUnknown = "unknown"
+	KoyebZoneTag   = "koyeb.com/zone"
 
 	// Locality related tags
 	ZoneTag = "kuma.io/zone"
@@ -475,6 +476,11 @@ func (d *Dataplane) IsDelegatedGateway() bool {
 func (d *Dataplane) IsBuiltinGateway() bool {
 	return d.GetNetworking().GetGateway() != nil &&
 		d.GetNetworking().GetGateway().GetType() == Dataplane_Networking_Gateway_BUILTIN
+}
+
+func (d *Dataplane) IsKoyebIngressGateway() bool {
+	return d.GetNetworking().GetGateway() != nil &&
+		d.GetNetworking().GetGateway().GetType() == Dataplane_Networking_Gateway_KOYEB_INGRESS_GATEWAY
 }
 
 func (t MultiValueTagSet) String() string {

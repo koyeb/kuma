@@ -56,7 +56,18 @@ func applyToGateways(
 	gatewayRoutes map[string]*envoy_route.RouteConfiguration,
 	proxy *core_xds.Proxy,
 ) error {
+<<<<<<< HEAD
 	for _, listenerInfo := range gateway_plugin.ExtractGatewayListeners(proxy) {
+=======
+	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
+		return nil
+	}
+	gatewayListerInfos, err := gateway_plugin.GatewayListenerInfoFromProxy(context.TODO(), ctx.Mesh, proxy, ctx.ControlPlane.Zone)
+	if err != nil {
+		return err
+	}
+	for _, listenerInfo := range gatewayListerInfos {
+>>>>>>> 6662659cd (Add IGW plugin)
 		address := proxy.Dataplane.Spec.GetNetworking().Address
 		port := listenerInfo.Listener.Port
 		listenerKey := core_rules.InboundListener{
