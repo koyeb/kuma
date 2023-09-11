@@ -165,11 +165,15 @@ func (p plugin) configureGateway(
 	egressEnabled bool,
 ) error {
 <<<<<<< HEAD
+<<<<<<< HEAD
 	gatewayListenerInfos := gateway_plugin.ExtractGatewayListeners(proxy)
 	if len(gatewayListenerInfos) == 0 {
 =======
 	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
 >>>>>>> 6662659cd (Add IGW plugin)
+=======
+	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() && !proxy.Dataplane.Spec.IsKoyebGlobalLoadBalancer() {
+>>>>>>> 8ea621e05 (Add boilerplate for GLB plugin)
 		return nil
 	}
 

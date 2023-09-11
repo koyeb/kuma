@@ -9,6 +9,7 @@ import (
 	model "github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/plugins/policies/core/generator"
 	gateway_metadata "github.com/kumahq/kuma/pkg/plugins/runtime/gateway/metadata"
+	global_load_balancer_metadata "github.com/kumahq/kuma/pkg/plugins/runtime/globalloadbalancer/metadata"
 	ingress_gateway_metadata "github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
 	util_envoy "github.com/kumahq/kuma/pkg/util/envoy"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
@@ -128,6 +129,7 @@ func init() {
 	// TODO: https://github.com/kumahq/kuma/issues/5144
 	RegisterProfile(gateway_metadata.ProfileGatewayProxy, NewFailingProfile())
 	RegisterProfile(ingress_gateway_metadata.ProfileIngressGatewayProxy, NewFailingProfile())
+	RegisterProfile(global_load_balancer_metadata.ProfileGlobalLoadBalancerProxy, NewFailingProfile())
 }
 
 type FailingResourceGenerator struct{}

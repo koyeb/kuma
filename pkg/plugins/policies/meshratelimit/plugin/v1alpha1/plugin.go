@@ -57,9 +57,13 @@ func applyToGateways(
 	proxy *core_xds.Proxy,
 ) error {
 <<<<<<< HEAD
+<<<<<<< HEAD
 	for _, listenerInfo := range gateway_plugin.ExtractGatewayListeners(proxy) {
 =======
 	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
+=======
+	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() && !proxy.Dataplane.Spec.IsKoyebGlobalLoadBalancer() {
+>>>>>>> 8ea621e05 (Add boilerplate for GLB plugin)
 		return nil
 	}
 	gatewayListerInfos, err := gateway_plugin.GatewayListenerInfoFromProxy(context.TODO(), ctx.Mesh, proxy, ctx.ControlPlane.Zone)
