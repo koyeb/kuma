@@ -1,4 +1,4 @@
-package ingressgateway
+package globalloadbalancer
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
-	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
+	"github.com/kumahq/kuma/pkg/plugins/runtime/globalloadbalancer/metadata"
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	envoy_listeners "github.com/kumahq/kuma/pkg/xds/envoy/listeners"
@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	IngressGatewayRoutesName = "ingress-gateway-routes"
+	GlobalLoadBalancerRoutesName = "global-load-balancer-routes"
 )
 
 // FilterChainGenerator is responsible for handling the filter chain for
@@ -35,6 +35,7 @@ type GatewayListener struct {
 	Protocol     mesh_proto.MeshGateway_Listener_Protocol
 	ResourceName string
 	Resources    *mesh_proto.MeshGateway_Listener_Resources // TODO verify these don't conflict when merging
+	TLS          *mesh_proto.MeshGateway_TLS_Conf
 }
 
 // GatewayListenerInfo holds everything needed to generate resources for a
@@ -46,7 +47,7 @@ type GatewayListenerInfo struct {
 	Listener GatewayListener
 }
 
-// Generator generates xDS resources for an entire Ingress Gateway.
+// Generator generates xDS resources for an entire Global Load Balancer.
 type Generator struct {
 	Zone                  string
 	FilterChainGenerators FilterChainGenerators
@@ -130,7 +131,7 @@ func MakeGatewayListener(
 	gateway *core_mesh.MeshGatewayResource,
 	listeners []*mesh_proto.MeshGateway_Listener,
 ) GatewayListener {
-	return GatewayListener{
+	listener := GatewayListener{
 		Port:     listeners[0].GetPort(),
 		Protocol: listeners[0].GetProtocol(),
 		ResourceName: envoy_names.GetGatewayListenerName(
@@ -140,6 +141,12 @@ func MakeGatewayListener(
 		),
 		Resources: listeners[0].GetResources(),
 	}
+
+	if listener.Protocol == mesh_proto.MeshGateway_Listener_HTTPS {
+		listener.TLS = listeners[0].GetTls()
+	}
+
+	return listener
 }
 
 func (g Generator) Generate(
@@ -173,7 +180,7 @@ func (g Generator) Generate(
 			limits = append(limits, *limit)
 		}
 
-		rdsResources, err := g.generateRDS(xdsCtx, proxy, info)
+		rdsResources, err := g.generateRDS(proxy, info)
 		if err != nil {
 			return nil, err
 		}
@@ -192,10 +199,10 @@ func (g Generator) generateRTDS(limits []RuntimeResoureLimitListener) *core_xds.
 	}
 
 	res := &core_xds.Resource{
-		Name:   "ingressgateway.listeners",
-		Origin: metadata.OriginIngressGateway,
+		Name:   "globalloadbalancer.listeners",
+		Origin: metadata.OriginGlobalLoadBalancer,
 		Resource: &envoy_service_runtime_v3.Runtime{
-			Name:  "ingressgateway.listeners",
+			Name:  "globalloadbalancer.listeners",
 			Layer: util_proto.MustStruct(layer),
 		},
 	}
@@ -210,7 +217,7 @@ func (g Generator) generateLDS(xdsCtx xds_context.Context, info GatewayListenerI
 
 	protocol := info.Listener.Protocol
 	if protocol != mesh_proto.MeshGateway_Listener_HTTP && protocol != mesh_proto.MeshGateway_Listener_HTTPS {
-		return nil, nil, errors.New("only HTTP and HTTPS are supported by Koyeb Ingress Gateway")
+		return nil, nil, errors.New("only HTTP and HTTPS are supported by Koyeb Global Load Balancer")
 	}
 
 	res, filterChainBuilders, err := g.FilterChainGenerators.FilterChainGenerators[protocol].Generate(xdsCtx, info)
@@ -248,7 +255,7 @@ func (g Generator) generateCDS(
 	return resources, nil
 }
 
-func (g Generator) generateRDS(xdsCtx xds_context.Context, proxy *core_xds.Proxy, info GatewayListenerInfo) (*core_xds.ResourceSet, error) {
+func (g Generator) generateRDS(proxy *core_xds.Proxy, info GatewayListenerInfo) (*core_xds.ResourceSet, error) {
 	switch info.Listener.Protocol {
 	case mesh_proto.MeshGateway_Listener_HTTPS,
 		mesh_proto.MeshGateway_Listener_HTTP:
@@ -259,16 +266,28 @@ func (g Generator) generateRDS(xdsCtx xds_context.Context, proxy *core_xds.Proxy
 	resources := core_xds.NewResourceSet()
 	routeConfig := GenerateRouteConfig(info)
 
-	routeBuilders, err := GenerateRouteBuilders(proxy)
-	if err != nil {
-		return nil, err
+	// For each koyeb app, add a VirtualHost with the domains of that app.
+	// For each virtual host:
+	//   * attach the right X-Koyeb-Route header, so the Ingress Gateway knows,
+	//   in turn, who to route tp
+	//   * choose the right aggregate cluster to route to, depending  on the
+	//   path
+	for _, koyebApp := range proxy.GlobalLoadBalancerProxy.KoyebApps {
+		routeBuilders, err := GenerateRouteBuilders(proxy, koyebApp.Services)
+		if err != nil {
+			return nil, err
+		}
+
+		vh, err := GenerateVirtualHost(proxy, routeBuilders, koyebApp.Domains)
+		if err != nil {
+			return nil, err
+		}
+
+		routeConfig.Configure(envoy_routes.VirtualHost(vh))
 	}
 
-	vh, err := GenerateVirtualHost(xdsCtx, proxy, routeBuilders)
-	if err != nil {
-		return nil, err
-	}
-
+	// Add a fallback virtual host which catchs every other request.
+	vh := GenerateFallbackVirtualHost(proxy)
 	routeConfig.Configure(envoy_routes.VirtualHost(vh))
 
 	res, err := BuildResourceSet(routeConfig)

@@ -1,0 +1,18 @@
+type: MeshGateway
+mesh: default
+name: global-load-balancer
+selectors:
+- match:
+    kuma.io/service: "global-load-balancer"
+conf:
+  listeners:
+  - port: 5600
+    protocol: HTTP
+    hostname: "*"
+  - port: 5603
+    protocol: HTTPS
+    hostname: "*"
+    tls:
+      mode: TERMINATE
+      certificates:
+        - secret: glb-cert
