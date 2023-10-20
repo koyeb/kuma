@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: ["koyeb-fork"]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT }}
+  GOOS: linux
+
+  GCP_CORE_PROJECT_ID: ${{ secrets.REGISTRY_GCP_PROJECT_ID }}
+  REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+  SERVICE_ACCOUNT_ID: ${{ secrets.REGISTRY_SERVICE_ACCOUNT_ID }}
+  # Required to push on the GCP core registry
+  WORKLOAD_ID: ${{ secrets.REGISTRY_WORKLOAD_ID }}
+  WORKLOAD_POOL_ID: ${{ secrets.REGISTRY_WORKLOAD_POOL_ID }}
+  WORKLOAD_POOL_PROVIDER_ID: ${{ secrets.REGISTRY_WORKLOAD_POOL_PROVIDER_ID }}
+  GCP_CORE_PROJECT_ID: ${{ secrets.REGISTRY_GCP_PROJECT_ID }}
+  REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+  SERVICE_ACCOUNT_ID: ${{ secrets.REGISTRY_SERVICE_ACCOUNT_ID }}
+
+jobs:
+  build-publish:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "1.20.7"
+      - name: set git config
+        run: |
+          git config --global "url.https://${{ secrets.GH_TOKEN }}:x-oauth-basic@github.com".insteadOf "https://github.com"
+      - name: Seed env
+        run: |
+          echo $GITHUB_SHA | awk '{ printf "BUILD_INFO_VERSION=koyeb-fork-%.7s\n", $1 }' >> $GITHUB_ENV
+          basename $GITHUB_REF | awk '{ printf "BRANCH_NAME=%s\n", $1 }' >> $GITHUB_ENV
+          echo "DOCKER_REGISTRY=eu.gcr.io/$PROJECT_ID" >> $GITHUB_ENV
+      - name: Configure gcloud for the GCP root registry
+        run: |
+          echo "${{ secrets.GCP_CREDENTIALS }}" | base64 -d > ${HOME}/gcp-key.json
+          gcloud auth activate-service-account --key-file ${HOME}/gcp-key.json --project $PROJECT_ID
+          gcloud auth configure-docker
+      - name: Build and push to docker on the GCP root registry
+        run: |
+          make build/coredns
+          for i in kuma-cp kuma-dp kumactl; do
+            make build/${i}
+            make image/${i}
+            docker tag $DOCKER_REGISTRY/${i}:$BUILD_INFO_VERSION $DOCKER_REGISTRY/${i}-v2:$BRANCH_NAME
+            docker tag $DOCKER_REGISTRY/${i}:$BUILD_INFO_VERSION $DOCKER_REGISTRY/${i}-v2:latest
+            docker push $DOCKER_REGISTRY/${i}:$BUILD_INFO_VERSION
+            docker push $DOCKER_REGISTRY/${i}:$BRANCH_NAME
+            docker push $DOCKER_REGISTRY/${i}:latest
+          done
+      # Push images on the GCP core registry
+      - name: Set environment variable for the core GCP registry
+        run: |
+          echo "SERVICE_ACCOUNT=$SERVICE_ACCOUNT_ID@$GCP_CORE_PROJECT_ID.iam.gserviceaccount.com" >> $GITHUB_ENV
+          echo "WORKLOAD_IDENTITY_PROVIDER=projects/$WORKLOAD_ID/locations/global/workloadIdentityPools/$WORKLOAD_POOL_ID/providers/$WORKLOAD_POOL_PROVIDER_ID" >> $GITHUB_ENV
+      - id: core-auth
+        name: Authenticate with Google Cloud for the GCP core registry
+        uses: google-github-actions/auth@v0
+        with:
+          token_format: access_token
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          access_token_lifetime: 300s
+      - name: Login to Artifact Registry for the GCP core registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY_URL }}
+          username: oauth2accesstoken
+          password: ${{ steps.core-auth.outputs.access_token }}
+      - name: Push the images on the GCP core registry
+        run: |
+          for i in kuma-cp kuma-dp kumactl; do
+            CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}-v2
+            docker tag $DOCKER_REGISTRY/${i}-v2:$BUILD_INFO_VERSION $CORE_IMAGE:$BUILD_INFO_VERSION
+            docker tag $DOCKER_REGISTRY/${i}-v2:$BUILD_INFO_VERSION $CORE_IMAGE:$BRANCH_NAME
+            docker tag $DOCKER_REGISTRY/${i}-v2:$BUILD_INFO_VERSION $CORE_IMAGE:latest
+            docker push $CORE_IMAGE:$BUILD_INFO_VERSION
+            docker push $CORE_IMAGE:$BRANCH_NAME
+            docker push $CORE_IMAGE:latest
+          done
