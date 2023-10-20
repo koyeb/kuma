@@ -8,9 +8,6 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT }}
   GOOS: linux
 
-  GCP_CORE_PROJECT_ID: ${{ secrets.REGISTRY_GCP_PROJECT_ID }}
-  REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
-  SERVICE_ACCOUNT_ID: ${{ secrets.REGISTRY_SERVICE_ACCOUNT_ID }}
   # Required to push on the GCP core registry
   WORKLOAD_ID: ${{ secrets.REGISTRY_WORKLOAD_ID }}
   WORKLOAD_POOL_ID: ${{ secrets.REGISTRY_WORKLOAD_POOL_ID }}
