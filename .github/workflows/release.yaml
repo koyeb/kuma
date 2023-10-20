@@ -1,8 +1,8 @@
 name: "release"
 on:
   release: {}
-  schedule:
-    - cron: 0 7 * * *
+  push:
+    branches: ["fjewnfwnefewnfweonfewoinfweoinfowien"] # We don't want this to trigger
   workflow_dispatch:
     inputs:
       release:
