@@ -52,9 +52,13 @@ jobs:
           registry: ${{ env.REGISTRY_URL }}
           username: oauth2accesstoken
           password: ${{ steps.core-auth.outputs.access_token }}
-      - name: Push the images on the GCP core registry
+      - name: Build and push the images on the GCP core registry
         run: |
+          make build/coredns
           for i in kuma-cp kuma-dp kumactl; do
+            make build/${i}
+            make image/${i}
+
             CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}-v2
             docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE:$BUILD_INFO_VERSION
             docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE:$BRANCH_NAME
