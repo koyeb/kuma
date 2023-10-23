@@ -6,6 +6,7 @@ on:
 
 env:
   GOOS: linux
+  ARCH: amd64
 
   # Required to push on the GCP core registry
   WORKLOAD_ID: ${{ secrets.REGISTRY_WORKLOAD_ID }}
@@ -57,13 +58,13 @@ jobs:
           make build/coredns
           for i in kuma-cp kuma-dp kumactl; do
             make build/${i}
-            make image/${i}/amd64
+            DOCKER_REGISTRY=${REGISTRY_URL} make image/${i}/${ARCH}
 
-            CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}-v2
-            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE:$BUILD_INFO_VERSION
-            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE:$BRANCH_NAME
-            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE:latest
-            docker push $CORE_IMAGE:$BUILD_INFO_VERSION
-            docker push $CORE_IMAGE:$BRANCH_NAME
-            docker push $CORE_IMAGE:latest
+            CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}
+            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE-v2:$BUILD_INFO_VERSION
+            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE-v2:$BRANCH_NAME
+            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE-v2:latest
+            docker push $CORE_IMAGE-v2:$BUILD_INFO_VERSION
+            docker push $CORE_IMAGE-v2:$BRANCH_NAME
+            docker push $CORE_IMAGE-v2:latest
           done
