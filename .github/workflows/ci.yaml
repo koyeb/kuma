@@ -58,12 +58,13 @@ jobs:
           for i in kuma-cp kuma-dp kumactl; do
             make build/${i}
             DOCKER_REGISTRY=${REGISTRY_URL} make image/${i}/amd64
+            BUILT_IMAGE=$REGISTRY_URL/$i:$BUILD_INFO_VERSION
+            CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}-v2
 
-            CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}
-            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE-v2:$BUILD_INFO_VERSION
-            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE-v2:$BRANCH_NAME
-            docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE-v2:latest
-            docker push $CORE_IMAGE-v2:$BUILD_INFO_VERSION
-            docker push $CORE_IMAGE-v2:$BRANCH_NAME
-            docker push $CORE_IMAGE-v2:latest
+            docker tag $BUILT_IMAGE $CORE_IMAGE:$BUILD_INFO_VERSION
+            docker tag $BUILT_IMAGE $CORE_IMAGE:$BRANCH_NAME
+            docker tag $BUILT_IMAGE $CORE_IMAGE:latest
+            docker push $CORE_IMAGE:$BUILD_INFO_VERSION
+            docker push $CORE_IMAGE:$BRANCH_NAME
+            docker push $CORE_IMAGE:latest
           done
