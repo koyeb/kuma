@@ -57,7 +57,7 @@ jobs:
           make build/coredns
           for i in kuma-cp kuma-dp kumactl; do
             make build/${i}
-            make image/${i}
+            make image/${i}/amd64
 
             CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}-v2
             docker tag $CORE_IMAGE:$BUILD_INFO_VERSION $CORE_IMAGE:$BUILD_INFO_VERSION
