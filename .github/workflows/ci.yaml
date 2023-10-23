@@ -55,9 +55,10 @@ jobs:
           password: ${{ steps.core-auth.outputs.access_token }}
       - name: Build and push the images on the GCP core registry
         run: |
-          make build/coredns
+          # make build/coredns
           for i in kuma-cp kuma-dp kumactl; do
-            make build/${i}
+            touch /build/artifacts-linux-amd64/${i}/${i}
+            # make build/${i}
             DOCKER_REGISTRY=${REGISTRY_URL} make image/${i}/${ARCH}
 
             CORE_IMAGE=$REGISTRY_URL/$GCP_CORE_PROJECT_ID/koyeb/${i}
