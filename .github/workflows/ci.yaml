@@ -32,7 +32,7 @@ jobs:
           git config --global "url.https://${{ secrets.GH_TOKEN }}:x-oauth-basic@github.com".insteadOf "https://github.com"
       - name: Seed env
         run: |
-          echo $GITHUB_SHA | awk '{ printf "BUILD_INFO_VERSION=0.0.0-preview%.10s-${ARCH}\n", $1 }' >> $GITHUB_ENV
+          echo $GITHUB_SHA | awk '{ printf "BUILD_INFO_VERSION=0.0.0-preview%.10s-amd64\n", $1 }' >> $GITHUB_ENV
           basename $GITHUB_REF | awk '{ printf "BRANCH_NAME=%s\n", $1 }' >> $GITHUB_ENV
       # Push images on the GCP core registry
       - name: Set environment variable for the core GCP registry
