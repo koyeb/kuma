@@ -1,7 +1,17 @@
 set dotenv-load
 
 use_debugger := if env_var_or_default("DEBUGGER", "") != "" { "yes" } else { "no" }
-artifacts := "./build/artifacts-darwin-amd64"
+
+artifacts := if os() == "macos" {
+  if arch() == "aarch64" {
+    "./build/artifacts-darwin-arm64/"
+  } else {
+    "./build/artifacts-darwin-amd64/"
+  }
+} else {
+  "./build/artifacts-linux-amd64/"
+}
+
 kumactl := artifacts / "kumactl/kumactl"
 kuma-cp := artifacts / "kuma-cp/kuma-cp"
 kuma-dp := artifacts / "kuma-dp/kuma-dp"
