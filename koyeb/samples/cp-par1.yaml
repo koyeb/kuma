@@ -39,7 +39,25 @@ store:
   tlsCipherSuites: [] # ENV: KUMA_MONITORING_ASSIGNMENT_SERVER_TLS_CIPHER_SUITES
 
 dpServer:
-  port: 5678
+  authn:
+    dpProxy:
+      type: dpToken
+      dpToken:
+        enableIssuer: false # disable control plane token issuer that uses secrets
+        validator:
+          useSecrets: false # do not use signing key stored in secrets to validate the token
+          publicKeys:
+          - kid: "key-1"
+            keyFile: ./build/koyeb/dp-token-signing-key/key-public.pem
+    zoneProxy:
+      type: zoneToken
+      zoneToken:
+        enableIssuer: false # disable control plane token issuer that uses secrets
+        validator:
+          useSecrets: false # do not use signing key stored in secrets to validate the token
+          publicKeys:
+          - kid: "key-1"
+            keyFile: ./build/koyeb/dp-token-signing-key/key-public.pem
 
 # Envoy XDS server configuration
 xdsServer:
