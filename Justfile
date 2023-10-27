@@ -25,6 +25,7 @@ kumactl-configs := "./koyeb/samples/kumactl-configs"
 glb-cert-path := "./build/koyeb/glb-certs"
 ca-cert-path := "./build/koyeb/certs"
 client-certs-path := "./build/koyeb/client-certs"
+dp-token-signing-key-path := "./build/koyeb/dp-token-signing-key"
 
 default:
   @just --list
@@ -38,7 +39,17 @@ run-db:
 stop-db:
   docker stop kuma-db
 
-gen-certs: _generate-ca-cert _generate-client-certs _generate-glb-cert
+init: _gen-certs
+
+_gen-certs: _generate-ca-cert _generate-client-certs _generate-glb-cert _gen-dp-signing-key
+
+# When kuma-dp wants to connect to kuma-cp, it needs to provide a token. Usually, the DP would ask the CP to generate the token.
+# In our case, we generate the token and sign it. The CP is provided a public key and verifies the given token when a DP connects.
+# This recipe generates a keypair to sign tokens.
+_gen-dp-signing-key:
+  mkdir -p {{dp-token-signing-key-path}}
+  {{kumactl}} generate signing-key --format=pem > {{dp-token-signing-key-path}}/key-private.pem
+  {{kumactl}} generate public-key --signing-key-path={{dp-token-signing-key-path}}/key-private.pem > {{dp-token-signing-key-path}}/key-public.pem
 
 # This generates a CA cert and its key. Those are expected to be loaded into each mesh
 _generate-ca-cert:
@@ -100,23 +111,24 @@ _init-default: (_inject_ca "default")
   cat koyeb/samples/mesh-default/meshtrace.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
 
 ingress: _build-dp _init-default
-  {{kumactl}} generate zone-token --zone=par1 --valid-for 720h --scope ingress > /tmp/dp-token-ingress
+  {{kumactl}} generate zone-token --signing-key-path {{dp-token-signing-key-path}}/key-private.pem --zone=par1 --valid-for 720h --scope ingress --kid key-1 > /tmp/offline-token-ingress
   {{dev-kuma-dp}} run \
     --proxy-type=ingress \
     --cp-address=https://127.0.0.1:5678 \
-    --dataplane-token-file=/tmp/dp-token-ingress \
+    --dataplane-token-file=/tmp/offline-token-ingress \
     --dataplane-file=koyeb/samples/mesh-default/ingress-par1.yaml
 
 glb: _build-dp _init-default _inject_glb-cert-secret
   cat koyeb/samples/mesh-default/mesh-gateway-global-load-balancer.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
-  {{kumactl}} generate dataplane-token -m default --valid-for 720h --config-file {{kumactl-configs}}/par1-cp.yaml > /tmp/glb-par1-token
-  {{dev-kuma-dp}} run --dataplane-token-file /tmp/glb-par1-token --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/mesh-default/global-load-balancer-par1.yaml
+
+  {{kumactl}} generate dataplane-token --signing-key-path {{dp-token-signing-key-path}}/key-private.pem -m default --valid-for 720h --config-file {{kumactl-configs}}/par1-cp.yaml --kid key-1 > /tmp/offline-token-glb
+  {{dev-kuma-dp}} run --dataplane-token-file /tmp/offline-token-glb --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/mesh-default/global-load-balancer-par1.yaml
 
 igw: _build-dp _init-default
   cat koyeb/samples/mesh-default/mesh-gateway-ingress-gateway.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
 
-  {{kumactl}} generate dataplane-token -m default --valid-for 720h --config-file {{kumactl-configs}}/par1-cp.yaml > /tmp/igw-par1-token
-  {{dev-kuma-dp}} run --dataplane-token-file /tmp/igw-par1-token --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/mesh-default/ingress-gateway-par1.yaml
+  {{kumactl}} generate dataplane-token --signing-key-path {{dp-token-signing-key-path}}/key-private.pem -m default --valid-for 720h --config-file {{kumactl-configs}}/par1-cp.yaml --kid key-1 > /tmp/offline-token-igw
+  {{dev-kuma-dp}} run --dataplane-token-file /tmp/offline-token-igw --log-level info --cp-address https://localhost:5678 -d ./koyeb/samples/mesh-default/ingress-gateway-par1.yaml
 
 test: test-http test-http2 test-grpc test-ws test-glb
 
@@ -241,7 +253,7 @@ dp: _build-dp (_inject_ca "abc")
   cat ./koyeb/samples/mesh-abc/dp.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/par1-cp.yaml -f -
 
 
-  # Generate a token for the dataplane instance
-  {{kumactl}} generate dataplane-token -m abc --valid-for 720h --config-file {{kumactl-configs}}/par1-cp.yaml > /tmp/abc-dp-token
+  # Generate and sign (offline) a token for the dataplane instance
+  {{kumactl}}  generate dataplane-token --mesh abc --valid-for 720h --signing-key-path {{dp-token-signing-key-path}}/key-private.pem --config-file {{kumactl-configs}}/par1-cp.yaml --kid key-1 > /tmp/offline-token-dp
   # Run the dataplane
-  {{dev-kuma-dp}} run --dataplane-token-file /tmp/abc-dp-token --name dp --log-level info --cp-address https://localhost:5678 --mesh abc
+  {{dev-kuma-dp}} run --dataplane-token-file /tmp/offline-token-dp --name dp --log-level info --cp-address https://localhost:5678 --mesh abc
