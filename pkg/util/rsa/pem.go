@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	publicBlockType     = "PUBLIC KEY"
 	rsaPrivateBlockType = "RSA PRIVATE KEY"
 	rsaPublicBlockType  = "RSA PUBLIC KEY"
 )
@@ -57,10 +58,27 @@ func FromPEMBytesToPrivateKey(b []byte) (*rsa.PrivateKey, error) {
 
 func FromPEMBytesToPublicKey(b []byte) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode(b)
-	if block.Type != rsaPublicBlockType {
-		return nil, errors.Errorf("invalid key encoding %q", block.Type)
+	if block.Type == rsaPublicBlockType {
 	}
-	return x509.ParsePKCS1PublicKey(block.Bytes)
+
+	switch block.Type {
+	case rsaPublicBlockType:
+		return x509.ParsePKCS1PublicKey(block.Bytes)
+	case publicBlockType:
+		key, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+
+		rsaKey, ok := key.(*rsa.PublicKey)
+		if !ok {
+			return nil, errors.Errorf("encoded key is not a RSA key")
+		}
+
+		return rsaKey, nil
+	}
+
+	return nil, errors.Errorf("invalid key encoding %q", block.Type)
 }
 
 func IsPrivateKeyPEMBytes(b []byte) bool {
