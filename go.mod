@@ -210,4 +210,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0 // indirect
 )
 
-replace github.com/kumahq/kuma => github.com/koyeb/kuma koyeb-fork
+replace github.com/kumahq/kuma => github.com/koyeb/kuma v0.0.0-20231031111409-e2d557341e44
