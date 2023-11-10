@@ -3,8 +3,6 @@ package sync
 import (
 	"context"
 
-	"github.com/pkg/errors"
-
 	"github.com/kumahq/kuma/pkg/core/plugins"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
@@ -13,6 +11,7 @@ import (
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	"github.com/kumahq/kuma/pkg/xds/envoy"
 	"github.com/kumahq/kuma/pkg/xds/template"
+	"github.com/pkg/errors"
 )
 
 type IngressGatewayProxyBuilder struct {
@@ -42,13 +41,7 @@ func (p *IngressGatewayProxyBuilder) Build(
 	// Here, reference an existing ZoneIngress to take it from DB and
 	// update its AvailableServices field that is full of the info we
 	// need to build the ZoneIngressProxy
-	zoneIngressKey := core_model.ResourceKey{
-		// NOTE(nicoche): change that
-		Name: "zoneingress-par1",
-		// A ZoneIngress is not part of any mesh
-		Mesh: "",
-	}
-	zoneIngress, err := p.getZoneIngress(ctx, zoneIngressKey, aggregatedMeshCtxs)
+	zoneIngress, err := p.getZoneIngressCustom(ctx, aggregatedMeshCtxs)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +70,31 @@ func (p *IngressGatewayProxyBuilder) Build(
 		Policies:         *matchedPolicies,
 	}
 	return proxy, nil
+}
+
+func (p *IngressGatewayProxyBuilder) getZoneIngressCustom(
+	ctx context.Context,
+	aggregatedMeshCtxs xds_context.AggregatedMeshContexts,
+) (*core_mesh.ZoneIngressResource, error) {
+	zoneIngresses := &core_mesh.ZoneIngressResourceList{}
+	err := p.ResManager.List(ctx, zoneIngresses, core_store.ListOrdered())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(zoneIngresses.Items) == 0 {
+		return nil, errors.New("need at least one defined zoneingress in the zone to generate the zone proxy of that ingress gateway")
+	}
+
+	zoneIngress := zoneIngresses.Items[0]
+	// Update Ingress' Available Services
+	// This was placed as an operation of DataplaneWatchdog out of the convenience.
+	// Consider moving to the outside of this component (follow the pattern of updating VIP outbounds)
+	if err := p.updateIngress(ctx, zoneIngress, aggregatedMeshCtxs); err != nil {
+		return nil, err
+	}
+
+	return zoneIngress, nil
 }
 
 // NOTE(nicoche) This is copy/pasted from DataplaneProxyBuilder.matchPolicies

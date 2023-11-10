@@ -1,5 +1,5 @@
 type: ZoneIngress
-name: zoneingress-par1
+name: zoneingress-localhost
 networking:
   address: 127.0.0.1
   port: 10001
