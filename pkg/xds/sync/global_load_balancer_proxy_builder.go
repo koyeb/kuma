@@ -29,12 +29,23 @@ func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_mod
 		return nil, err
 	}
 
+	fraCoord, err := coord.NewCoord([]string{"8.6821", "50.1109"})
+	if err != nil {
+		return nil, err
+	}
+
 	datacenters := []*core_xds.KoyebDatacenter{
 		{
 			ID:       "par1",
 			RegionID: "par",
 			Coord:    parCoord,
-			Domain:   "localhost",
+			Domain:   "glb-par1.infra.staging.koyeb.com",
+		},
+		{
+			ID:       "fra1",
+			RegionID: "fra",
+			Coord:    fraCoord,
+			Domain:   "glb-fra1.infra.staging.koyeb.com",
 		},
 	}
 
