@@ -233,7 +233,7 @@ dp-container2:
   # This container should never receive any request. It should be ensured by abc's TrafficRoute policy
   docker run -p 8012:5678 hashicorp/http-echo -text="ERROR!! I'm a leftover container for a service. I do not have the right koyeb.com/global-deployment tag, hence I should not receive any request!"
 
-dp: _build-dp (_inject_ca "abc")
+dp: _build-dp (_inject_ca "abc") (_inject_ca "default")
   # Upsert default mesh
   cat ./koyeb/samples/mesh-default/mesh.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
 
