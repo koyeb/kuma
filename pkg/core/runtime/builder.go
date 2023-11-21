@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful/v3"
+	"github.com/koyeb/koyeb-api-client-go-internal/api/v1/koyeb"
 	"github.com/pkg/errors"
 
 	"github.com/kumahq/kuma/pkg/api-server/authn"
@@ -104,6 +105,7 @@ type Builder struct {
 	pgxConfigCustomizationFn config.PgxConfigCustomization
 	tenants                  multitenant.Tenants
 	apiWebServiceCustomize   []func(*restful.WebService) error
+	catalogDatacenters       koyeb.CatalogDatacentersApi
 }
 
 func BuilderFor(appCtx context.Context, cfg kuma_cp.Config) (*Builder, error) {
@@ -294,6 +296,11 @@ func (b *Builder) WithAPIWebServiceCustomize(customize func(*restful.WebService)
 	return b
 }
 
+func (b *Builder) WithCatalogDatacenters(catalogDatacenters koyeb.CatalogDatacentersApi) *Builder {
+	b.catalogDatacenters = catalogDatacenters
+	return b
+}
+
 func (b *Builder) Build() (Runtime, error) {
 	if b.cm == nil {
 		return nil, errors.Errorf("ComponentManager has not been configured")
@@ -370,6 +377,9 @@ func (b *Builder) Build() (Runtime, error) {
 	if b.tenants == nil {
 		return nil, errors.Errorf("Tenants has not been configured")
 	}
+	if b.catalogDatacenters == nil {
+		return nil, errors.Errorf("Catalog datacenters has not been configured")
+	}
 	return &runtime{
 		RuntimeInfo: b.runtimeInfo,
 		RuntimeContext: &runtimeContext{
@@ -405,6 +415,7 @@ func (b *Builder) Build() (Runtime, error) {
 			pgxConfigCustomizationFn: b.pgxConfigCustomizationFn,
 			tenants:                  b.tenants,
 			apiWebServiceCustomize:   b.apiWebServiceCustomize,
+			catalogDatacenters:       b.catalogDatacenters,
 		},
 		Manager: b.cm,
 	}, nil
@@ -544,4 +555,8 @@ func (b *Builder) Tenants() multitenant.Tenants {
 
 func (b *Builder) APIWebServiceCustomize() []func(*restful.WebService) error {
 	return b.apiWebServiceCustomize
+}
+
+func (b *Builder) CatalogDatacenters() koyeb.CatalogDatacentersApi {
+	return b.catalogDatacenters
 }

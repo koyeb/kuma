@@ -167,6 +167,8 @@ type Config struct {
 	Tracing tracing.Config `json:"tracing"`
 	// EventBus is a configuration of the event bus which is local to one instance of CP.
 	EventBus eventbus.Config `json:"eventBus"`
+	// Koyeb API URL
+	KoyebApiUrl string `json:"koyeb_api_url"`
 }
 
 func (c Config) IsFederatedZoneCP() bool {
@@ -267,6 +269,7 @@ var DefaultConfig = func() Config {
 		Proxy:    xds.DefaultProxyConfig(),
 		InterCp:  intercp.DefaultInterCpConfig(),
 		EventBus: eventbus.Default(),
+		KoyebApiUrl: "",
 	}
 }
 

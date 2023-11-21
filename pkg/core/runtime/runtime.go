@@ -8,6 +8,7 @@ import (
 	"github.com/emicklei/go-restful/v3"
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/koyeb/koyeb-api-client-go-internal/api/v1/koyeb"
 	"github.com/kumahq/kuma/pkg/api-server/authn"
 	api_server "github.com/kumahq/kuma/pkg/api-server/customization"
 	kuma_cp "github.com/kumahq/kuma/pkg/config/app/kuma-cp"
@@ -89,6 +90,7 @@ type RuntimeContext interface {
 	PgxConfigCustomizationFn() config.PgxConfigCustomization
 	Tenants() multitenant.Tenants
 	APIWebServiceCustomize() func(ws *restful.WebService) error
+	CatalogDatacenters() koyeb.CatalogDatacentersApi
 }
 
 type Access struct {
@@ -179,6 +181,7 @@ type runtimeContext struct {
 	pgxConfigCustomizationFn config.PgxConfigCustomization
 	tenants                  multitenant.Tenants
 	apiWebServiceCustomize   []func(*restful.WebService) error
+	catalogDatacenters       koyeb.CatalogDatacentersApi
 }
 
 func (rc *runtimeContext) Metrics() metrics.Metrics {
@@ -319,4 +322,8 @@ func (rc *runtimeContext) APIWebServiceCustomize() func(*restful.WebService) err
 
 		return err.ErrorOrNil()
 	}
+}
+
+func (rc *runtimeContext) CatalogDatacenters() koyeb.CatalogDatacentersApi {
+	return rc.catalogDatacenters
 }

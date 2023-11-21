@@ -5,6 +5,7 @@ import (
 	"net"
 	"sort"
 
+	"github.com/koyeb/koyeb-api-client-go-internal/api/v1/koyeb"
 	"github.com/pkg/errors"
 
 	"github.com/kumahq/kuma/pkg/coord"
@@ -15,6 +16,7 @@ import (
 
 type GlobalLoadBalancerProxyBuilder struct {
 	*DataplaneProxyBuilder
+	CatalogDatacenters koyeb.CatalogDatacentersApi
 }
 
 func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_model.ResourceKey, meshContext xds_context.MeshContext) (*core_xds.Proxy, error) {
@@ -23,30 +25,25 @@ func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_mod
 		return nil, err
 	}
 
-	// TODO(nicoche) fetch this from the API
-	parCoord, err := coord.NewCoord([]string{"2.3522", "48.8566"})
+	resp, _, err := p.CatalogDatacenters.ListDatacentersExecute(p.CatalogDatacenters.ListDatacenters(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	fraCoord, err := coord.NewCoord([]string{"8.6821", "50.1109"})
-	if err != nil {
-		return nil, err
-	}
+	datacenters := []*core_xds.KoyebDatacenter{}
+	for _, koyebDC := range *resp.Datacenters {
+		coordinates, err := coord.NewCoord(*koyebDC.Coordinates)
+		if err != nil {
+			return nil, err
+		}
 
-	datacenters := []*core_xds.KoyebDatacenter{
-		{
-			ID:       "par1",
-			RegionID: "par",
-			Coord:    parCoord,
-			Domain:   "glb-par1.infra.staging.koyeb.com",
-		},
-		{
-			ID:       "fra1",
-			RegionID: "fra",
-			Coord:    fraCoord,
-			Domain:   "glb-fra1.infra.staging.koyeb.com",
-		},
+		datacenters = append(datacenters, &core_xds.KoyebDatacenter{
+			ID:       *koyebDC.Id,
+			RegionID: *koyebDC.RegionId,
+			Domain:   *koyebDC.Domain,
+			Coord:    coordinates,
+		})
+
 	}
 
 	endpointMap, err := p.buildEndpointMap(datacenters)

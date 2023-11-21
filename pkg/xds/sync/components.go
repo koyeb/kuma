@@ -43,10 +43,12 @@ func DefaultIngressGatewayProxyBuilder(
 }
 
 func DefaultGlobalLoadBalancerProxyBuilder(
+	rt core_runtime.Runtime,
 	dataplaneProxyBuilder *DataplaneProxyBuilder,
 ) *GlobalLoadBalancerProxyBuilder {
 	return &GlobalLoadBalancerProxyBuilder{
-		dataplaneProxyBuilder,
+		DataplaneProxyBuilder: dataplaneProxyBuilder,
+		CatalogDatacenters:    rt.CatalogDatacenters(),
 	}
 }
 
@@ -80,7 +82,7 @@ func DefaultDataplaneWatchdogFactory(
 	)
 
 	ingressGatewayProxyBuilder := DefaultIngressGatewayProxyBuilder(ingressProxyBuilder)
-	globalLoadBalancerProxyBuilder := DefaultGlobalLoadBalancerProxyBuilder(dataplaneProxyBuilder)
+	globalLoadBalancerProxyBuilder := DefaultGlobalLoadBalancerProxyBuilder(rt, dataplaneProxyBuilder)
 
 	egressProxyBuilder := DefaultEgressProxyBuilder(rt, apiVersion)
 
