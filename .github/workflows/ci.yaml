@@ -6,6 +6,7 @@ on:
 
 env:
   GOOS: linux
+  GOPRIVATE: github.com/koyeb/koyeb-api-client-go-internal
 
   # Required to push on the GCP core registry
   WORKLOAD_ID: ${{ secrets.REGISTRY_WORKLOAD_ID }}
