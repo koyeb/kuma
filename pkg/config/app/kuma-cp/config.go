@@ -168,7 +168,7 @@ type Config struct {
 	// EventBus is a configuration of the event bus which is local to one instance of CP.
 	EventBus eventbus.Config `json:"eventBus"`
 	// Koyeb API URL
-	KoyebApiUrl string `json:"koyeb_api_url"`
+	KoyebApiUrl string `json:"koyebApiUrl" envconfig:"koyeb_api_url"`
 }
 
 func (c Config) IsFederatedZoneCP() bool {
