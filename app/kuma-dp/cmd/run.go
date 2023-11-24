@@ -14,6 +14,7 @@ import (
 	"github.com/kumahq/kuma/app/kuma-dp/pkg/dataplane/dnsserver"
 	"github.com/kumahq/kuma/app/kuma-dp/pkg/dataplane/envoy"
 	"github.com/kumahq/kuma/app/kuma-dp/pkg/dataplane/metrics"
+	"github.com/kumahq/kuma/app/kuma-dp/pkg/dataplane/tcphealthchecksrv"
 	kuma_cmd "github.com/kumahq/kuma/pkg/cmd"
 	"github.com/kumahq/kuma/pkg/config"
 	kumadp "github.com/kumahq/kuma/pkg/config/app/kuma-dp"
@@ -38,6 +39,8 @@ func newRunCmd(opts kuma_cmd.RunCmdOpts, rootCtx *RootContext) *cobra.Command {
 	cfg := rootCtx.Config
 	var tmpDir string
 	var proxyResource model.Resource
+	var tcpHealthCheckServerProbeIP, tcpProbeTargetIP string
+	var tcpHealthCheckServerProbePort uint32
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Launch Dataplane (Envoy)",
@@ -156,6 +159,10 @@ func newRunCmd(opts kuma_cmd.RunCmdOpts, rootCtx *RootContext) *cobra.Command {
 					runLog.WithName("access-log-streamer"),
 					accesslogs.NewAccessLogStreamer(accessLogSocketPath),
 				),
+			}
+
+			if tcpProbeTargetIP != "" {
+				components = append(components, tcphealthchecksrv.New(tcpHealthCheckServerProbeIP, tcpHealthCheckServerProbePort, tcpProbeTargetIP))
 			}
 
 			opts := envoy.Opts{
@@ -301,6 +308,9 @@ func newRunCmd(opts kuma_cmd.RunCmdOpts, rootCtx *RootContext) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.DNS.CoreDNSConfigTemplatePath, "dns-coredns-config-template-path", cfg.DNS.CoreDNSConfigTemplatePath, "A path to a CoreDNS config template.")
 	cmd.PersistentFlags().StringVar(&cfg.DNS.ConfigDir, "dns-server-config-dir", cfg.DNS.ConfigDir, "Directory in which DNS Server config will be generated")
 	cmd.PersistentFlags().Uint32Var(&cfg.DNS.PrometheusPort, "dns-prometheus-port", cfg.DNS.PrometheusPort, "A port for exposing Prometheus stats")
+	cmd.PersistentFlags().StringVar(&tcpHealthCheckServerProbeIP, "tcp-health-check-server-probe-ip", "127.0.0.1", "The IP where the tcp health check server is listening")
+	cmd.PersistentFlags().Uint32Var(&tcpHealthCheckServerProbePort, "tcp-health-check-server-probe-port", 65001, "The port where the tcp health check server is listening")
+	cmd.PersistentFlags().StringVar(&tcpProbeTargetIP, "tcp-probe-target-ip", "", "The IP used to execute the TCP connection ")
 	return cmd
 }
 

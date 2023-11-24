@@ -308,4 +308,16 @@ message Dataplane {
   // https://kuma.io/docs/latest/policies/service-health-probes/#virtual-probes
   // for more information.
   Probes probes = 3;
+
+  message TCPProbes {
+    uint32 port = 1;
+    uint32 destination_port = 2;
+  }
+  repeated TCPProbes tcp_probes = 40;
+
+  message TCPHealthCheckServerProbe {
+    uint32 port = 1;
+    uint32 destination_port = 2;
+  }
+  TCPHealthCheckServerProbe tcp_health_check_server_probe = 999;
 }
