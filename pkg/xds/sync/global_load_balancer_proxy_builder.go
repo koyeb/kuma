@@ -2,10 +2,12 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sort"
 
 	"github.com/koyeb/koyeb-api-client-go-internal/api/v1/koyeb"
+	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	"github.com/kumahq/kuma/pkg/coord"
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
@@ -36,7 +38,7 @@ func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_mod
 		return nil, err
 	}
 
-	endpointMap, err := p.buildEndpointMap(datacenters)
+	endpointMap, err := p.buildEndpointMap(datacenters, meshContext)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +121,13 @@ func (p *GlobalLoadBalancerProxyBuilder) fetchKoyebApps(ctx context.Context) ([]
 	return koyebApps, nil
 }
 
-func (p *GlobalLoadBalancerProxyBuilder) buildEndpointMap(datacenters []*core_xds.KoyebDatacenter) (core_xds.EndpointMap, error) {
+func (p *GlobalLoadBalancerProxyBuilder) buildEndpointMap(datacenters []*core_xds.KoyebDatacenter, meshContext xds_context.MeshContext) (core_xds.EndpointMap, error) {
 	endpointMap := core_xds.EndpointMap{}
+
+	igwMtlsPort, err := p.findIngressGatewayPort(meshContext)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not find ingress gateway port")
+	}
 
 	for _, dc := range datacenters {
 		// TODO(nicoche): move that in a goroutine
@@ -138,12 +145,38 @@ func (p *GlobalLoadBalancerProxyBuilder) buildEndpointMap(datacenters []*core_xd
 		for _, ip := range ips {
 			endpointMap[dc.ID] = append(endpointMap[dc.ID], core_xds.Endpoint{
 				Target: ip.String(),
-				// TODO(nicoche) should we harmonize that? urgh it's ugly
-				Port:   5602,
+				Port:   igwMtlsPort,
 				Weight: 1,
 			})
 		}
 	}
 
 	return endpointMap, nil
+}
+
+// Alright this looks pretty disgusting but we expect only a few (we have 2 now) MeshGateway resources
+// in the mesh so it is really not a problem to compute... this way
+func (p *GlobalLoadBalancerProxyBuilder) findIngressGatewayPort(meshContext xds_context.MeshContext) (uint32, error) {
+	for _, meshGateway := range meshContext.Resources.MeshGateways().Items {
+		selectors := meshGateway.Selectors()
+		for _, selector := range selectors {
+			service, ok := selector.GetMatch()["kuma.io/service"]
+			if !ok {
+				continue
+			}
+
+			if service == "ingress-gateway" {
+				listeners := meshGateway.Spec.GetConf().GetListeners()
+				for _, listener := range listeners {
+					tls := listener.GetTls()
+					if tls != nil && tls.GetMode() == mesh_proto.MeshGateway_TLS_KOYEB_IN_MESH_MTLS {
+						return listener.Port, nil
+					}
+				}
+
+				return 0, fmt.Errorf("mesh gateway %s does not declare a TLS_KOYEB_IN_MESH_MTLS listener", meshGateway.GetMeta().GetName())
+			}
+		}
+	}
+	return 0, errors.New("could not find MeshGateway resource matching ingress gateway service")
 }
