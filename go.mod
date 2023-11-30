@@ -90,7 +90,7 @@ require (
 )
 
 require (
-	github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20220601190400-a00e50665f23
+	github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20231130083609-3d30916c94b2
 	github.com/stretchr/testify v1.8.4
 )
 

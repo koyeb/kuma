@@ -110,17 +110,11 @@ func GenerateNotFoundRouteBuilder() *route.RouteBuilder {
 func getSortedPathRoutes(koyebServices []*core_xds.KoyebService) pathRoutes {
 	pathRoutes := pathRoutes{}
 
-	// Note that we expect the total number of paths for this set of services
-	// to be relatively small (<2 in 90% 0f cases, < 10 in 99% of cases) so
-	// we do not really care about those nested for loops.
-
 	for _, service := range koyebServices {
-		for _, path := range service.Paths {
-			pathRoutes = append(pathRoutes, &pathRoute{
-				path:    path,
-				service: service,
-			})
-		}
+		pathRoutes = append(pathRoutes, &pathRoute{
+			path:    service.Path,
+			service: service,
+		})
 	}
 
 	sort.SliceStable(pathRoutes, func(i int, j int) bool {

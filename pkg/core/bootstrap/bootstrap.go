@@ -138,8 +138,10 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 
 	if cfg.KoyebApiUrl != "" {
 		builder.WithCatalogDatacenters(koyeb.NewDatacenterCatalog(cfg.KoyebApiUrl))
+		builder.WithInternalDeployments(koyeb.NewInternalDeployments(cfg.KoyebApiUrl))
 	} else {
 		builder.WithCatalogDatacenters(koyeb.NewLocalDatacenterCatalog())
+		builder.WithInternalDeployments(koyeb.NewLocalInternalDeployments())
 	}
 
 	if cfg.Mode == config_core.Global {

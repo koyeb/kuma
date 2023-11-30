@@ -106,6 +106,7 @@ type Builder struct {
 	tenants                  multitenant.Tenants
 	apiWebServiceCustomize   []func(*restful.WebService) error
 	catalogDatacenters       koyeb.CatalogDatacentersApi
+	internalDeployments      koyeb.InternalDeploymentsApi
 }
 
 func BuilderFor(appCtx context.Context, cfg kuma_cp.Config) (*Builder, error) {
@@ -301,6 +302,11 @@ func (b *Builder) WithCatalogDatacenters(catalogDatacenters koyeb.CatalogDatacen
 	return b
 }
 
+func (b *Builder) WithInternalDeployments(internalDeployments koyeb.InternalDeploymentsApi) *Builder {
+	b.internalDeployments = internalDeployments
+	return b
+}
+
 func (b *Builder) Build() (Runtime, error) {
 	if b.cm == nil {
 		return nil, errors.Errorf("ComponentManager has not been configured")
@@ -380,6 +386,9 @@ func (b *Builder) Build() (Runtime, error) {
 	if b.catalogDatacenters == nil {
 		return nil, errors.Errorf("Catalog datacenters has not been configured")
 	}
+	if b.internalDeployments == nil {
+		return nil, errors.Errorf("Internal Deployments has not been configured")
+	}
 	return &runtime{
 		RuntimeInfo: b.runtimeInfo,
 		RuntimeContext: &runtimeContext{
@@ -416,6 +425,7 @@ func (b *Builder) Build() (Runtime, error) {
 			tenants:                  b.tenants,
 			apiWebServiceCustomize:   b.apiWebServiceCustomize,
 			catalogDatacenters:       b.catalogDatacenters,
+			internalDeployments:      b.internalDeployments,
 		},
 		Manager: b.cm,
 	}, nil
@@ -559,4 +569,8 @@ func (b *Builder) APIWebServiceCustomize() []func(*restful.WebService) error {
 
 func (b *Builder) CatalogDatacenters() koyeb.CatalogDatacentersApi {
 	return b.catalogDatacenters
+}
+
+func (b *Builder) InternalDeployments() koyeb.InternalDeploymentsApi {
+	return b.internalDeployments
 }

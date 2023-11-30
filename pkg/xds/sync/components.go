@@ -49,6 +49,7 @@ func DefaultGlobalLoadBalancerProxyBuilder(
 	return &GlobalLoadBalancerProxyBuilder{
 		DataplaneProxyBuilder: dataplaneProxyBuilder,
 		CatalogDatacenters:    rt.CatalogDatacenters(),
+		InternalDeployments:   rt.InternalDeployments(),
 	}
 }
 

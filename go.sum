@@ -339,6 +339,10 @@ github.com/klauspost/compress v1.17.1/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQs
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20220601190400-a00e50665f23 h1:IFbha4UK34W2VWeHmwD+O3sYyxumtTVmKNu4VWE70IE=
 github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20220601190400-a00e50665f23/go.mod h1:W7RzArGhGgxyHFbOYr8OFWtJs0RrYOQRCm1S9LYNQsg=
+github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20231129142417-97723151876a h1:yITWy7XcuAA+QwpqtO6WgcnluPzHpksCh1v+TCt1N7c=
+github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20231129142417-97723151876a/go.mod h1:W7RzArGhGgxyHFbOYr8OFWtJs0RrYOQRCm1S9LYNQsg=
+github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20231130083609-3d30916c94b2 h1:fjFJ756NhPaq8u63rDvj7LXl62YblU5HIiQpUa6gsUM=
+github.com/koyeb/koyeb-api-client-go-internal v0.0.0-20231130083609-3d30916c94b2/go.mod h1:W7RzArGhGgxyHFbOYr8OFWtJs0RrYOQRCm1S9LYNQsg=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=

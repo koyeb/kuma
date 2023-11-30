@@ -91,6 +91,7 @@ type RuntimeContext interface {
 	Tenants() multitenant.Tenants
 	APIWebServiceCustomize() func(ws *restful.WebService) error
 	CatalogDatacenters() koyeb.CatalogDatacentersApi
+	InternalDeployments() koyeb.InternalDeploymentsApi
 }
 
 type Access struct {
@@ -182,6 +183,7 @@ type runtimeContext struct {
 	tenants                  multitenant.Tenants
 	apiWebServiceCustomize   []func(*restful.WebService) error
 	catalogDatacenters       koyeb.CatalogDatacentersApi
+	internalDeployments      koyeb.InternalDeploymentsApi
 }
 
 func (rc *runtimeContext) Metrics() metrics.Metrics {
@@ -326,4 +328,8 @@ func (rc *runtimeContext) APIWebServiceCustomize() func(*restful.WebService) err
 
 func (rc *runtimeContext) CatalogDatacenters() koyeb.CatalogDatacentersApi {
 	return rc.catalogDatacenters
+}
+
+func (rc *runtimeContext) InternalDeployments() koyeb.InternalDeploymentsApi {
+	return rc.internalDeployments
 }

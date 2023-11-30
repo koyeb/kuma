@@ -6,17 +6,18 @@ import (
 	"sort"
 
 	"github.com/koyeb/koyeb-api-client-go-internal/api/v1/koyeb"
-	"github.com/pkg/errors"
-
 	"github.com/kumahq/kuma/pkg/coord"
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
+	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 )
 
 type GlobalLoadBalancerProxyBuilder struct {
 	*DataplaneProxyBuilder
-	CatalogDatacenters koyeb.CatalogDatacentersApi
+	CatalogDatacenters  koyeb.CatalogDatacentersApi
+	InternalDeployments koyeb.InternalDeploymentsApi
 }
 
 func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_model.ResourceKey, meshContext xds_context.MeshContext) (*core_xds.Proxy, error) {
@@ -25,6 +26,31 @@ func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_mod
 		return nil, err
 	}
 
+	datacenters, err := p.fetchDatacenters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	koyebApps, err := p.fetchKoyebApps(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	endpointMap, err := p.buildEndpointMap(datacenters)
+	if err != nil {
+		return nil, err
+	}
+
+	proxy.GlobalLoadBalancerProxy = &core_xds.GlobalLoadBalancerProxy{
+		Datacenters: datacenters,
+		EndpointMap: endpointMap,
+		KoyebApps:   koyebApps,
+	}
+
+	return proxy, nil
+}
+
+func (p *GlobalLoadBalancerProxyBuilder) fetchDatacenters(ctx context.Context) ([]*core_xds.KoyebDatacenter, error) {
 	resp, _, err := p.CatalogDatacenters.ListDatacentersExecute(p.CatalogDatacenters.ListDatacenters(ctx))
 	if err != nil {
 		return nil, err
@@ -46,20 +72,51 @@ func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_mod
 
 	}
 
-	endpointMap, err := p.buildEndpointMap(datacenters)
+	return datacenters, nil
+}
+
+func (p *GlobalLoadBalancerProxyBuilder) fetchKoyebApps(ctx context.Context) ([]*core_xds.KoyebApp, error) {
+
+	resp, _, err := p.InternalDeployments.ListAllRoutesExecute(p.InternalDeployments.ListAllRoutes(ctx).UseKumaV2(true))
 	if err != nil {
 		return nil, err
 	}
 
-	koyebApps := p.fetchKoyebApps()
+	routesByAppId := map[string][]koyeb.ListAllRoutesReplyRoute{}
 
-	proxy.GlobalLoadBalancerProxy = &core_xds.GlobalLoadBalancerProxy{
-		Datacenters: datacenters,
-		EndpointMap: endpointMap,
-		KoyebApps:   koyebApps,
+	// First, grroup routes by AppId
+	for _, route := range resp.GetRoutes() {
+		routesByAppId[route.GetAppId()] = append(routesByAppId[route.GetAppId()], route)
 	}
 
-	return proxy, nil
+	// Build output list
+	koyebApps := []*core_xds.KoyebApp{}
+	for _, routes := range routesByAppId {
+		koyebApp := &core_xds.KoyebApp{}
+
+		domains := map[string]struct{}{}
+		for _, route := range routes {
+			dcs := map[string]struct{}{}
+
+			for _, dc := range route.GetDatacenters() {
+				dcs[dc] = struct{}{}
+			}
+
+			domains[route.GetDomain()] = struct{}{}
+			koyebApp.Services = append(koyebApp.Services, &core_xds.KoyebService{
+				ID:              route.GetServiceId(),
+				DatacenterIDs:   dcs,
+				Port:            uint32(route.GetPort()),
+				DeploymentGroup: route.GetDeploymentGroup(),
+				Path:            route.GetPath(),
+			})
+		}
+
+		koyebApp.Domains = maps.Keys(domains)
+		koyebApps = append(koyebApps, koyebApp)
+	}
+
+	return koyebApps, nil
 }
 
 func (p *GlobalLoadBalancerProxyBuilder) buildEndpointMap(datacenters []*core_xds.KoyebDatacenter) (core_xds.EndpointMap, error) {
@@ -89,64 +146,4 @@ func (p *GlobalLoadBalancerProxyBuilder) buildEndpointMap(datacenters []*core_xd
 	}
 
 	return endpointMap, nil
-}
-
-func (p *GlobalLoadBalancerProxyBuilder) fetchKoyebApps() []*core_xds.KoyebApp {
-	return []*core_xds.KoyebApp{
-		{
-			Domains: []string{"grpc.koyeb.app"},
-			Services: []*core_xds.KoyebService{
-				{
-					ID: "dp",
-					DatacenterIDs: map[string]struct{}{
-						"par1": {},
-					},
-					Port:            8004,
-					DeploymentGroup: "prod",
-					Paths:           []string{""},
-				},
-			},
-		},
-		{
-			Domains: []string{"http.local.koyeb.app"},
-			Services: []*core_xds.KoyebService{
-				{
-					ID: "dp",
-					DatacenterIDs: map[string]struct{}{
-						"par1": {},
-					},
-					Port:            8001,
-					DeploymentGroup: "prod",
-					Paths:           []string{"/http"},
-				},
-				{
-					ID: "dp",
-					DatacenterIDs: map[string]struct{}{
-						"par1": {},
-					},
-					Port:            8002,
-					DeploymentGroup: "prod",
-					Paths:           []string{"/http2"},
-				},
-				{
-					ID: "dp",
-					DatacenterIDs: map[string]struct{}{
-						"par1": {},
-					},
-					Port:            8004,
-					DeploymentGroup: "prod",
-					Paths:           []string{"/grpc"},
-				},
-				{
-					ID: "dp",
-					DatacenterIDs: map[string]struct{}{
-						"par1": {},
-					},
-					Port:            8011,
-					DeploymentGroup: "prod",
-					Paths:           []string{"/ws"},
-				},
-			},
-		},
-	}
 }

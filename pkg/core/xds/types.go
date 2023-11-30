@@ -251,7 +251,7 @@ type KoyebService struct {
 	DatacenterIDs   map[string]struct{}
 	Port            uint32
 	DeploymentGroup string
-	Paths           []string
+	Path           string
 }
 
 type VIPDomains struct {
