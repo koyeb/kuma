@@ -144,6 +144,7 @@ func MakeGatewayListener(
 
 func (g Generator) Generate(
 	ctx context.Context,
+	_ *core_xds.ResourceSet,
 	xdsCtx xds_context.Context,
 	proxy *core_xds.Proxy,
 ) (*core_xds.ResourceSet, error) {

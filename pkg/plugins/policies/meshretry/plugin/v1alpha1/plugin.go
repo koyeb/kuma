@@ -83,24 +83,7 @@ func applyToGateway(
 	gatewayListeners map[core_rules.InboundListener]*envoy_listener.Listener,
 	proxy *core_xds.Proxy,
 ) error {
-<<<<<<< HEAD
-<<<<<<< HEAD
 	for _, listenerInfo := range gateway_plugin.ExtractGatewayListeners(proxy) {
-=======
-	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
-=======
-	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() && !proxy.Dataplane.Spec.IsKoyebGlobalLoadBalancer() {
->>>>>>> 8ea621e05 (Add boilerplate for GLB plugin)
-		return nil
-	}
-
-	gatewayListerInfos, err := gateway_plugin.GatewayListenerInfoFromProxy(context.TODO(), ctx.Mesh, proxy, ctx.ControlPlane.Zone)
-	if err != nil {
-		return err
-	}
-
-	for _, listenerInfo := range gatewayListerInfos {
->>>>>>> 6662659cd (Add IGW plugin)
 		configurer := plugin_xds.Configurer{
 			Retry:    core_rules.ComputeConf[api.Conf](rules.Rules, core_rules.MeshSubset()),
 			Protocol: core_mesh.ParseProtocol(listenerInfo.Listener.Protocol.String()),

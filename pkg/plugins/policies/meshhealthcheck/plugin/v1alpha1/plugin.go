@@ -66,23 +66,7 @@ func applyToGateways(
 	gatewayClusters map[string]*envoy_cluster.Cluster,
 	proxy *core_xds.Proxy,
 ) error {
-<<<<<<< HEAD
-<<<<<<< HEAD
 	for _, listenerInfo := range gateway_plugin.ExtractGatewayListeners(proxy) {
-=======
-	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() {
-=======
-	if !proxy.Dataplane.Spec.IsBuiltinGateway() && !proxy.Dataplane.Spec.IsKoyebIngressGateway() && !proxy.Dataplane.Spec.IsKoyebGlobalLoadBalancer() {
->>>>>>> 8ea621e05 (Add boilerplate for GLB plugin)
-		return nil
-	}
-	gatewayListenerInfos, err := gateway_plugin.GatewayListenerInfoFromProxy(context.TODO(), ctx.Mesh, proxy, ctx.ControlPlane.Zone)
-	if err != nil {
-		return err
-	}
-
-	for _, listenerInfo := range gatewayListenerInfos {
->>>>>>> 6662659cd (Add IGW plugin)
 		for _, hostInfo := range listenerInfo.HostInfos {
 			destinations := gateway_plugin.RouteDestinationsMutable(hostInfo.Entries)
 			for _, dest := range destinations {

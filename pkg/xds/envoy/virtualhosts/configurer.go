@@ -3,8 +3,9 @@ package virtualhosts
 import (
 	envoy_config_core_v3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_config_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
+
+	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	envoy_common "github.com/kumahq/kuma/pkg/xds/envoy"
 	envoy_routes_v3 "github.com/kumahq/kuma/pkg/xds/envoy/routes/v3"
 )
