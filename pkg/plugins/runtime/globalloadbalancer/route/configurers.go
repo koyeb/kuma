@@ -104,7 +104,29 @@ func RouteMatchPresentHeader(name string, presentMatch bool) RouteConfigurer {
 	})
 }
 
-func RouteActionCluster(cluster string, autoHostRewrite bool, newPath string) RouteConfigurer {
+func RouteActionClusterStripPrefixMatched(cluster string, autoHostRewrite bool) RouteConfigurer {
+	if cluster == "" {
+		return RouteConfigureFunc(nil)
+	}
+
+	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
+		rAction := &envoy_config_route.RouteAction{
+			PrefixRewrite: "/",
+			ClusterSpecifier: &envoy_config_route.RouteAction_Cluster{
+				Cluster: cluster,
+			},
+			HostRewriteSpecifier: &envoy_config_route.RouteAction_AutoHostRewrite{
+				AutoHostRewrite: util_proto.Bool(autoHostRewrite),
+			},
+		}
+
+		r.Action = &envoy_config_route.Route_Route{
+			Route: rAction,
+		}
+	})
+}
+
+func RouteActionClusterReplacePath(cluster string, autoHostRewrite bool, newPath string) RouteConfigurer {
 	if cluster == "" {
 		return RouteConfigureFunc(nil)
 	}

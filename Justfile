@@ -169,6 +169,7 @@ test-http:
   # Check that the GLB forwards correctly HTTP1. The grep ensures that the path as perceived by the container is correctly stripped
   curl --fail http://localhost:5600/http -H "host: http.local.koyeb.app" -s | grep 'path: /$'
   curl --fail http://localhost:5600/http -H "host: http.local.koyeb.app" --http2-prior-knowledge -s  | grep 'path: /$'
+  curl --fail http://localhost:5600/http/subpath -H "host: http.local.koyeb.app" --http2-prior-knowledge -s  | grep 'path: /subpath$'
   curl --fail -k https://localhost:5603/http -H "host: http.local.koyeb.app" -s | grep 'path: /$'
   curl --fail -k https://localhost:5603/http -H "host: http.local.koyeb.app" --http2-prior-knowledge -s  | grep 'path: /$'
   @echo

@@ -78,7 +78,7 @@ func generateServiceRoutes(path string, service *core_xds.KoyebService) []*route
 			"X-Koyeb-Route",
 			fmt.Sprintf("%s-%d_%s", service.ID, service.Port, service.DeploymentGroup),
 		)))
-		routeBuilder.Configure(route.RouteActionCluster(clusterName, false, "/"))
+		routeBuilder.Configure(route.RouteActionClusterStripPrefixMatched(clusterName, false))
 
 		return routeBuilder
 	}
@@ -102,7 +102,7 @@ func GenerateNotFoundRouteBuilder() *route.RouteBuilder {
 
 	routeBuilder := &route.RouteBuilder{}
 	routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
-	routeBuilder.Configure(route.RouteActionCluster(clusterName, true, "/cloudflare-404/"))
+	routeBuilder.Configure(route.RouteActionClusterReplacePath(clusterName, true, "/cloudflare-404/"))
 
 	return routeBuilder
 }
