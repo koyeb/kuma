@@ -30,11 +30,14 @@ var defaultRetryPolicy = core_mesh.RetryResource{
 // GenerateVirtualHost generates xDS resources for the current route table.
 // Note that the routes should be configured in the intended match order!
 func GenerateVirtualHost(xdsCtx xds_context.Context, proxy *core_xds.Proxy, routes []*route.RouteBuilder) (*envoy_virtual_hosts.VirtualHostBuilder, error) {
+	datacenter := proxy.Dataplane.Spec.TagSet().Values(mesh_proto.KoyebDatacenterTag)[0]
 	region := proxy.Dataplane.Spec.TagSet().Values(mesh_proto.KoyebRegionTag)[0]
 
 	vh := envoy_virtual_hosts.NewVirtualHostBuilder(proxy.APIVersion, "wildcard").Configure(
 		envoy_virtual_hosts.DomainNames("*"),
-		envoy_virtual_hosts.SetRequestHeader("X-KOYEB-BACKEND", region),
+		envoy_virtual_hosts.SetRequestHeader("X-KOYEB-REGION", region),
+		envoy_virtual_hosts.SetRequestHeader("X-KOYEB-BACKEND", datacenter),
+		envoy_virtual_hosts.SetRequestHeader("X-KOYEB-DATACENTER", datacenter),
 		// TODO(nicoche) verify the protocol here
 		envoy_virtual_hosts.Retry(&defaultRetryPolicy, "http"),
 	)
