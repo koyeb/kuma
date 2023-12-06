@@ -1,6 +1,7 @@
 type: VirtualOutbound
 conf:
-  host: '{{.service}}.{{.app}}.internal'
+  host: '{{.service}}.{{.app}}.koyeb'
+  port: '{{.port}}'
   parameters:
     - name: app
       tagKey: koyeb.com/app-name
@@ -10,10 +11,8 @@ conf:
       tagKey: koyeb.com/service-name
     - name: kumaservice
       tagKey: kuma.io/service
-  port: '{{.port}}'
 mesh: abc
-name: k-mesh-dns-internal
+name: k-mesh-dns-koyeb
 selectors:
 - match:
-    koyeb.com/service-name: '*'
     kuma.io/mesh: "abc"
