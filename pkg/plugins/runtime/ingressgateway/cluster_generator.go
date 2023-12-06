@@ -11,6 +11,7 @@ import (
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
+	meshhttproute_api "github.com/kumahq/kuma/pkg/plugins/policies/meshhttproute/api/v1alpha1"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	"github.com/kumahq/kuma/pkg/xds/envoy/clusters"
@@ -35,6 +36,17 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 		services := maps.Keys(mr.EndpointMap)
 		sort.Strings(services)
 
+		res := xds_context.Resources{MeshLocalResources: mr.Resources}
+		meshHTTPRoutes := res.ListOrEmpty(meshhttproute_api.MeshHTTPRouteType).(*meshhttproute_api.MeshHTTPRouteResourceList).Items
+		log.Info(
+			"Building mesh destination",
+			fmt.Sprintf("availableSvcsByMesh[%s]", targetMeshName), availableSvcsByMesh[targetMeshName],
+			"TrafficRoutes", res.TrafficRoutes().Items,
+			"GatewayRoutes", res.GatewayRoutes().Items,
+			"MeshGateways", res.MeshGateways().Items,
+			"VirtualOutbounds", res.VirtualOutbounds().Items,
+			"MeshHTTPRoutes", meshHTTPRoutes,
+		)
 		dest := zoneproxy.BuildMeshDestinations(
 			availableSvcsByMesh[targetMeshName],
 			xds_context.Resources{MeshLocalResources: mr.Resources},
@@ -76,6 +88,7 @@ func generateEdsCluster(
 		envoy_tags.Without(mesh_proto.ServiceTag),
 	)
 
+	log.Info("Creating cluster", "cluster", clusterName, "lb_subset", tagKeySlice, "dest", dest)
 	clusterBuilder := clusters.NewClusterBuilder(proxy.APIVersion, clusterName).Configure(
 		clusters.EdsCluster(),
 		clusters.LbSubset(tagKeySlice),
