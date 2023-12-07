@@ -56,6 +56,8 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 			// NOTE(nicoche): see if we should grab this dynamically
 			serviceEndpoints := endpointMap[serviceName]
 
+			relevantTagsUsed := map[string]struct{}{}
+
 			for _, destination := range destinations {
 				sni := tls.SNIFromTags(destination.
 					WithTags(mesh_proto.ServiceTag, serviceName).
@@ -94,6 +96,11 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 						relevantTags[key] = value
 					}
 				}
+
+				if _, ok := relevantTagsUsed[relevantTags.String()]; ok {
+					continue
+				}
+				relevantTagsUsed[relevantTags.String()] = struct{}{}
 
 				routeBuilder := &route.RouteBuilder{}
 				routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
