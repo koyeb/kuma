@@ -15,4 +15,4 @@ mesh: abc
 name: k-mesh-dns-internal
 selectors:
 - match:
-    kuma.io/mesh: "abc"
+    kuma.io/service: "*"

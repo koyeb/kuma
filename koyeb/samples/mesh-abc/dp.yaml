@@ -17,6 +17,7 @@ networking:
         koyeb.com/port: "8001"
         koyeb.com/service-name: dp-8001
         koyeb.com/global-deployment: "active"
+        koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http
     - port: 9932
       servicePort: 8002
@@ -29,6 +30,7 @@ networking:
         koyeb.com/port: "8002"
         koyeb.com/service-name: dp-8002
         koyeb.com/global-deployment: "active"
+        koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http2
     - port: 9934
       servicePort: 8004
@@ -41,6 +43,7 @@ networking:
         koyeb.com/port: "8004"
         koyeb.com/service-name: dp-8004
         koyeb.com/global-deployment: "active"
+        koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http2
     - port: 9936
       servicePort: 8006
@@ -53,6 +56,7 @@ networking:
         koyeb.com/port: "8006"
         koyeb.com/service-name: dp-8006
         koyeb.com/global-deployment: "active"
+        koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: tcp
     - port: 9941
       servicePort: 8011
@@ -65,6 +69,7 @@ networking:
         koyeb.com/port: "8011"
         koyeb.com/service-name: dp-8011
         koyeb.com/global-deployment: "active"
+        koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http
     - port: 9942
       servicePort: 8012
@@ -79,4 +84,5 @@ networking:
         koyeb.com/port: "8012"
         koyeb.com/service-name: dp-8001
         koyeb.com/global-deployment: "not-active"
+        koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http

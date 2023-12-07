@@ -24,8 +24,9 @@ const (
 	ServiceUnknown = "unknown"
 
 	// Koyeb tags
-	KoyebDatacenterTag = "koyeb.com/datacenter"
-	KoyebRegionTag     = "koyeb.com/region"
+	KoyebDatacenterTag   = "koyeb.com/datacenter"
+	KoyebRegionTag       = "koyeb.com/region"
+	KoyebDeploymentGroup = "koyeb.com/deploymentgroup"
 
 	// Locality related tags
 	ZoneTag = "kuma.io/zone"

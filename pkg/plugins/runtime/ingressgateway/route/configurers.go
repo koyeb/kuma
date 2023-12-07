@@ -5,6 +5,7 @@ import (
 	envoy_config_route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"github.com/pkg/errors"
 
+	envoy_type_matcher "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
 	envoy_metadata "github.com/kumahq/kuma/pkg/xds/envoy/metadata/v3"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	envoy_virtual_hosts "github.com/kumahq/kuma/pkg/xds/envoy/virtualhosts"
@@ -80,6 +81,27 @@ func RouteMatchPresentHeader(name string, presentMatch bool) RouteConfigurer {
 				Name: name,
 				HeaderMatchSpecifier: &envoy_config_route.HeaderMatcher_PresentMatch{
 					PresentMatch: presentMatch,
+				},
+			},
+		)
+	})
+}
+
+func RouteMatchHeaderExactMatch(name string, str string) RouteConfigurer {
+	if name == "" {
+		return RouteConfigureFunc(nil)
+	}
+
+	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
+		r.Match.Headers = append(r.Match.Headers,
+			&envoy_config_route.HeaderMatcher{
+				Name: name,
+				HeaderMatchSpecifier: &envoy_config_route.HeaderMatcher_StringMatch{
+					StringMatch: &envoy_type_matcher.StringMatcher{
+						MatchPattern: &envoy_type_matcher.StringMatcher_Exact{
+							Exact: str,
+						},
+					},
 				},
 			},
 		)

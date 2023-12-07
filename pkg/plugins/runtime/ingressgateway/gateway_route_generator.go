@@ -1,6 +1,7 @@
 package ingressgateway
 
 import (
+	"fmt"
 	"sort"
 
 	"golang.org/x/exp/maps"
@@ -47,6 +48,8 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 
 		for _, service := range availableServices {
 			serviceName := service.Tags[mesh_proto.ServiceTag]
+			deploymentGroup := service.Tags[mesh_proto.KoyebDeploymentGroup]
+
 			destinations := destinationsPerService[serviceName]
 			destinations = append(destinations, destinationsPerService[mesh_proto.MatchAllTag]...)
 
@@ -92,10 +95,9 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 					}
 				}
 
-				// NOTE(nicoche) This generates too many routes for no reason. Fix that
 				routeBuilder := &route.RouteBuilder{}
 				routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
-				routeBuilder.Configure(route.RouteMatchPresentHeader("X-KOYEB-ROUTE", true))
+				routeBuilder.Configure(route.RouteMatchHeaderExactMatch("X-KOYEB-ROUTE", fmt.Sprintf("%s_%s", serviceName, deploymentGroup)))
 				routeBuilder.Configure(route.RouteActionClusterHeader("X-KOYEB-ROUTE", relevantTags))
 
 				routeBuilders = append(routeBuilders, routeBuilder)
