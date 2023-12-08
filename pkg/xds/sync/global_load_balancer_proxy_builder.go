@@ -9,6 +9,7 @@ import (
 	"github.com/koyeb/koyeb-api-client-go-internal/api/v1/koyeb"
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	"github.com/kumahq/kuma/pkg/coord"
+	core_plugins "github.com/kumahq/kuma/pkg/core/plugins"
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
@@ -47,6 +48,12 @@ func (p *GlobalLoadBalancerProxyBuilder) Build(ctx context.Context, key core_mod
 		Datacenters: datacenters,
 		EndpointMap: endpointMap,
 		KoyebApps:   koyebApps,
+	}
+	for k, pl := range core_plugins.Plugins().ProxyPlugins() {
+		err := pl.Apply(ctx, meshContext, proxy)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed applying proxy plugin: %s", k)
+		}
 	}
 
 	return proxy, nil

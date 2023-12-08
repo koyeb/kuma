@@ -8,9 +8,9 @@ import (
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 	core_store "github.com/kumahq/kuma/pkg/core/resources/store"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
+	"github.com/kumahq/kuma/pkg/plugins/policies/core/ordered"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	"github.com/kumahq/kuma/pkg/xds/envoy"
-	"github.com/kumahq/kuma/pkg/plugins/policies/core/ordered"
 	"github.com/kumahq/kuma/pkg/xds/template"
 	"github.com/pkg/errors"
 )
@@ -62,13 +62,21 @@ func (p *IngressGatewayProxyBuilder) Build(
 	}
 
 	proxy := &core_xds.Proxy{
-		Id:               core_xds.FromResourceKey(key),
-		APIVersion:       p.apiVersion,
-		Dataplane:        dp,
-		ZoneIngressProxy: p.buildZoneIngressProxy(zoneIngress, aggregatedMeshCtxs),
-		SecretsTracker:   secretsTracker,
-		Metadata:         &core_xds.DataplaneMetadata{},
-		Policies:         *matchedPolicies,
+		Id:                core_xds.FromResourceKey(key),
+		APIVersion:        p.apiVersion,
+		Dataplane:         dp,
+		ZoneIngressProxy:  p.buildZoneIngressProxy(zoneIngress, aggregatedMeshCtxs),
+		SecretsTracker:    secretsTracker,
+		Metadata:          &core_xds.DataplaneMetadata{},
+		Policies:          *matchedPolicies,
+		Zone:              p.zone,
+		RuntimeExtensions: map[string]interface{}{},
+	}
+	for k, pl := range core_plugins.Plugins().ProxyPlugins() {
+		err := pl.Apply(ctx, meshContext, proxy)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed applying proxy plugin: %s", k)
+		}
 	}
 	return proxy, nil
 }

@@ -68,16 +68,13 @@ type Route struct {
 	DeploymentGroup string
 }
 
-// GatewayListenerInfoFromProxy processes a Dataplane and the corresponding
+// gatewayListenerInfoFromProxy processes a Dataplane and the corresponding
 // Gateway and returns information about the listeners, routes and applied
 // policies.
 // NOTE(nicoche)  This ^ is the original comment. In practice, we use it
 // only for the listener part. The routes/endpoint part is not computed here
-func GatewayListenerInfoFromProxy(
-	ctx context.Context, meshCtx xds_context.MeshContext, proxy *core_xds.Proxy, zone string,
-) (
-	[]GatewayListenerInfo, error,
-) {
+func gatewayListenerInfoFromProxy(
+	ctx context.Context, meshCtx *xds_context.MeshContext, proxy *core_xds.Proxy) []GatewayListenerInfo {
 	gateway := xds_topology.SelectGateway(meshCtx.Resources.Gateways().Items, proxy.Dataplane.Spec.Matches)
 
 	if gateway == nil {
@@ -87,7 +84,7 @@ func GatewayListenerInfoFromProxy(
 			"service", proxy.Dataplane.Spec.GetIdentifyingService(),
 		)
 
-		return nil, nil
+		return nil
 	}
 
 	log.V(1).Info(fmt.Sprintf("matched gateway %q to dataplane %q",
@@ -123,7 +120,7 @@ func GatewayListenerInfoFromProxy(
 		})
 	}
 
-	return listenerInfos, nil
+	return listenerInfos
 }
 
 func MakeGatewayListener(
@@ -150,14 +147,9 @@ func (g Generator) Generate(
 ) (*core_xds.ResourceSet, error) {
 	resources := core_xds.NewResourceSet()
 
-	listenerInfos, err := GatewayListenerInfoFromProxy(ctx, xdsCtx.Mesh, proxy, g.Zone)
-	if err != nil {
-		return nil, errors.Wrap(err, "error generating listener info from Proxy")
-	}
-
 	var limits []RuntimeResoureLimitListener
 
-	for _, info := range listenerInfos {
+	for _, info := range ExtractGatewayListeners(proxy) {
 		cdsResources, err := g.generateCDS(ctx, xdsCtx, proxy)
 		if err != nil {
 			return nil, err

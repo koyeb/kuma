@@ -64,10 +64,15 @@ func (p *DataplaneProxyBuilder) Build(ctx context.Context, key core_model.Resour
 		Zone:              p.Zone,
 		RuntimeExtensions: map[string]interface{}{},
 	}
-	for k, pl := range core_plugins.Plugins().ProxyPlugins() {
-		err := pl.Apply(ctx, meshContext, proxy)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed applying proxy plugin: %s", k)
+
+	// The GLB builds performs more operations to build its proxy.
+	// It will invoke the plugins by itself
+	if !dp.Spec.IsKoyebGlobalLoadBalancer() {
+		for k, pl := range core_plugins.Plugins().ProxyPlugins() {
+			err := pl.Apply(ctx, meshContext, proxy)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed applying proxy plugin: %s", k)
+			}
 		}
 	}
 	return proxy, nil
