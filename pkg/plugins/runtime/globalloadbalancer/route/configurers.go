@@ -2,16 +2,16 @@ package route
 
 import (
 	"net/http"
+	"time"
 
 	envoy_config_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_config_route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	envoy_type_matcher "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
-	"github.com/pkg/errors"
-
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	envoy_metadata "github.com/kumahq/kuma/pkg/xds/envoy/metadata/v3"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	envoy_virtual_hosts "github.com/kumahq/kuma/pkg/xds/envoy/virtualhosts"
+	"github.com/pkg/errors"
 )
 
 // VirtualHostRoute creates an option to add the route builder to a
@@ -104,7 +104,7 @@ func RouteMatchPresentHeader(name string, presentMatch bool) RouteConfigurer {
 	})
 }
 
-func RouteActionClusterStripPrefixMatched(cluster string, autoHostRewrite bool) RouteConfigurer {
+func RouteActionClusterStripPrefixMatched(cluster string, autoHostRewrite bool, maxStreamDuration time.Duration) RouteConfigurer {
 	if cluster == "" {
 		return RouteConfigureFunc(nil)
 	}
@@ -114,6 +114,9 @@ func RouteActionClusterStripPrefixMatched(cluster string, autoHostRewrite bool) 
 			PrefixRewrite: "/",
 			ClusterSpecifier: &envoy_config_route.RouteAction_Cluster{
 				Cluster: cluster,
+			},
+			MaxStreamDuration: &envoy_config_route.RouteAction_MaxStreamDuration{
+				MaxStreamDuration: util_proto.Duration(maxStreamDuration),
 			},
 			HostRewriteSpecifier: &envoy_config_route.RouteAction_AutoHostRewrite{
 				AutoHostRewrite: util_proto.Bool(autoHostRewrite),

@@ -3,10 +3,9 @@ package ingressgateway
 import (
 	"context"
 	"fmt"
+	"time"
 
 	envoy_service_runtime_v3 "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
-	"github.com/pkg/errors"
-
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
@@ -17,10 +16,12 @@ import (
 	envoy_names "github.com/kumahq/kuma/pkg/xds/envoy/names"
 	envoy_routes "github.com/kumahq/kuma/pkg/xds/envoy/routes"
 	xds_topology "github.com/kumahq/kuma/pkg/xds/topology"
+	"github.com/pkg/errors"
 )
 
 const (
 	IngressGatewayRoutesName = "ingress-gateway-routes"
+	MaxStreamDuration        = 12 * time.Hour
 )
 
 // FilterChainGenerator is responsible for handling the filter chain for

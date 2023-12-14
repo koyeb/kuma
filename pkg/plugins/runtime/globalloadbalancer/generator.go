@@ -3,6 +3,7 @@ package globalloadbalancer
 import (
 	"context"
 	"fmt"
+	"time"
 
 	envoy_service_runtime_v3 "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
 	"github.com/pkg/errors"
@@ -21,6 +22,7 @@ import (
 
 const (
 	GlobalLoadBalancerRoutesName = "global-load-balancer-routes"
+	MaxStreamDuration        = 12 * time.Hour
 )
 
 // FilterChainGenerator is responsible for handling the filter chain for

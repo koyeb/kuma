@@ -105,7 +105,7 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 				routeBuilder := &route.RouteBuilder{}
 				routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
 				routeBuilder.Configure(route.RouteMatchHeaderExactMatch("X-KOYEB-ROUTE", fmt.Sprintf("%s_%s", serviceName, deploymentGroup)))
-				routeBuilder.Configure(route.RouteActionClusterHeader("X-KOYEB-ROUTE", relevantTags))
+				routeBuilder.Configure(route.RouteActionClusterHeader("X-KOYEB-ROUTE", relevantTags, MaxStreamDuration))
 
 				routeBuilders = append(routeBuilders, routeBuilder)
 			}

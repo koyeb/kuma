@@ -78,7 +78,7 @@ func generateServiceRoutes(path string, service *core_xds.KoyebService) []*route
 			"X-Koyeb-Route",
 			fmt.Sprintf("%s-%d_%s", service.ID, service.Port, service.DeploymentGroup),
 		)))
-		routeBuilder.Configure(route.RouteActionClusterStripPrefixMatched(clusterName, false))
+		routeBuilder.Configure(route.RouteActionClusterStripPrefixMatched(clusterName, false, MaxStreamDuration))
 
 		return routeBuilder
 	}

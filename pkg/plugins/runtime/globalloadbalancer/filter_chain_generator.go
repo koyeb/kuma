@@ -51,7 +51,7 @@ const (
 // Timeout defaults.
 const (
 	DefaultRequestHeadersTimeout = 500 * time.Millisecond
-	DefaultStreamIdleTimeout     = 10 * time.Second
+	DefaultStreamIdleTimeout     = 12 * time.Hour
 	DefaultIdleTimeout           = 10 * time.Minute
 )
 

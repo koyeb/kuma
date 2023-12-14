@@ -1,14 +1,16 @@
 package route
 
 import (
+	"time"
+
 	envoy_config_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_config_route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
-	"github.com/pkg/errors"
-
 	envoy_type_matcher "github.com/envoyproxy/go-control-plane/envoy/type/matcher/v3"
+	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	envoy_metadata "github.com/kumahq/kuma/pkg/xds/envoy/metadata/v3"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	envoy_virtual_hosts "github.com/kumahq/kuma/pkg/xds/envoy/virtualhosts"
+	"github.com/pkg/errors"
 )
 
 // VirtualHostRoute creates an option to add the route builder to a
@@ -108,7 +110,7 @@ func RouteMatchHeaderExactMatch(name string, str string) RouteConfigurer {
 	})
 }
 
-func RouteActionClusterHeader(header string, tags envoy_tags.Tags) RouteConfigurer {
+func RouteActionClusterHeader(header string, tags envoy_tags.Tags, maxStreamDuration time.Duration) RouteConfigurer {
 	if header == "" {
 		return RouteConfigureFunc(nil)
 	}
@@ -117,6 +119,9 @@ func RouteActionClusterHeader(header string, tags envoy_tags.Tags) RouteConfigur
 		rAction := &envoy_config_route.RouteAction{
 			ClusterSpecifier: &envoy_config_route.RouteAction_ClusterHeader{
 				ClusterHeader: header,
+			},
+			MaxStreamDuration: &envoy_config_route.RouteAction_MaxStreamDuration{
+				MaxStreamDuration: util_proto.Duration(maxStreamDuration),
 			},
 		}
 		if len(tags) != 0 {
