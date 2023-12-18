@@ -48,6 +48,7 @@ func (g OutboundProxyGenerator) Generate(ctx context.Context, _ *model.ResourceS
 		// Determine the list of destination subsets
 		// For one outbound listener it may contain many subsets (ex. TrafficRoute to many destinations)
 		routes := g.determineRoutes(proxy, outbound, clusterCache, xdsCtx.Mesh.Resource.ZoneEgressEnabled())
+		outboundLog.Info("Determined routes for outbound.", "dataplane", proxy.Dataplane.Meta.GetName(), "mesh", proxy.Dataplane.Meta.GetMesh(), "outbound", outbound, "routes", routes)
 		clusters := routes.Clusters()
 
 		protocol := InferProtocol(proxy, clusters)
