@@ -182,6 +182,17 @@ func RouteReplaceHeader(name string, value string) *envoy_config_core.HeaderValu
 	}
 }
 
+// RouteAddResponseHeader alters the given response header value.
+func RouteAddResponseHeader(option *envoy_config_core.HeaderValueOption) RouteConfigurer {
+	if option == nil {
+		return RouteConfigureFunc(nil)
+	}
+
+	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
+		r.ResponseHeadersToAdd = append(r.ResponseHeadersToAdd, option)
+	})
+}
+
 // RouteAddRequestHeader alters the given request header value.
 func RouteAddRequestHeader(option *envoy_config_core.HeaderValueOption) RouteConfigurer {
 	if option == nil {
@@ -192,6 +203,7 @@ func RouteAddRequestHeader(option *envoy_config_core.HeaderValueOption) RouteCon
 		r.RequestHeadersToAdd = append(r.RequestHeadersToAdd, option)
 	})
 }
+
 
 func GetRegexRewrite(newPath string) *envoy_type_matcher.RegexMatchAndSubstitute {
 	if newPath == "" {

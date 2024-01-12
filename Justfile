@@ -184,6 +184,9 @@ test-glb:
   curl http://localhost:5600           -H "host: http.local.koyeb.app" --output /dev/null -s -w "%{http_code}\n" | grep 404
   @echo
 
+  # Check that /health returns  Timing-Allow-Origin: * header
+  curl http://localhost:5600/health --output /dev/null -s -w "%{header_json}\n"  | jq '."timing-allow-origin"'[0] | grep '*'
+
 test-grpc:
   # Check that the target container is live
   grpcurl --plaintext localhost:8004 main.HelloWorld/Greeting

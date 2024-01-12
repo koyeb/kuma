@@ -49,6 +49,9 @@ func GenerateFallbackVirtualHost(proxy *core_xds.Proxy) *envoy_virtual_hosts.Vir
 	healthChecksRouteBuilder := &route.RouteBuilder{}
 	healthChecksRouteBuilder.Configure(route.RouteMatchExactPath("/health"))
 	healthChecksRouteBuilder.Configure(route.RouteActionDirectResponse(http.StatusOK, "OK"))
+	healthChecksRouteBuilder.Configure(route.RouteAddResponseHeader(
+		route.RouteReplaceHeader("Timing-Allow-Origin", "*"),
+	))
 
 	fallbackRoute := GenerateNotFoundRouteBuilder()
 
