@@ -209,6 +209,7 @@ func (d *VIPsAllocator) BuildVirtualOutboundMeshView(ctx context.Context, mesh s
 		return nil, err
 	}
 
+	l := Log.WithValues("mesh", mesh)//, "virtualOutboundName", vob.Meta.GetName(), "type", resourceType, "name", resourceName, "tags", tags)
 	for _, zi := range zoneIngresses.Items {
 		for _, service := range zi.Spec.GetAvailableServices() {
 			if !zi.IsRemoteIngress(d.zone) {
@@ -217,7 +218,9 @@ func (d *VIPsAllocator) BuildVirtualOutboundMeshView(ctx context.Context, mesh s
 			if service.Mesh == mesh && d.serviceVipEnabled {
 				errs = multierr.Append(errs, addDefault(outboundSet, service.GetTags()[mesh_proto.ServiceTag], 0))
 			}
-			for _, vob := range Match(virtualOutbounds.Items, service.Tags) {
+			match := Match(virtualOutbounds.Items, service.Tags)
+			l.Info("Matched virtual outbound from zone ingress", "zoneingressname", zi.Meta.GetName(), "virtualoutbounds", virtualOutbounds.Items, "match", match)
+			for _, vob := range match {
 				addFromVirtualOutbound(outboundSet, vob, service.Tags, zi.Descriptor().Name, zi.Meta.GetName())
 			}
 		}
