@@ -95,15 +95,20 @@ func (p *IngressGatewayProxyBuilder) getZoneIngressCustom(
 		return nil, errors.New("need at least one defined zoneingress in the zone to generate the zone proxy of that ingress gateway")
 	}
 
-	zoneIngress := zoneIngresses.Items[0]
-	// Update Ingress' Available Services
-	// This was placed as an operation of DataplaneWatchdog out of the convenience.
-	// Consider moving to the outside of this component (follow the pattern of updating VIP outbounds)
-	if err := p.updateIngress(ctx, zoneIngress, aggregatedMeshCtxs); err != nil {
-		return nil, err
+	for _, zoneIngress := range zoneIngresses.Items {
+		if zoneIngress.Spec.Zone == p.zone {
+			// Update Ingress' Available Services
+			// This was placed as an operation of DataplaneWatchdog out of the convenience.
+			// Consider moving to the outside of this component (follow the pattern of updating VIP outbounds)
+			if err := p.updateIngress(ctx, zoneIngress, aggregatedMeshCtxs); err != nil {
+				return nil, err
+			}
+
+			return zoneIngress, nil
+		}
 	}
 
-	return zoneIngress, nil
+	return nil, errors.New("could not find a ZoneIngress with the right zone in db")
 }
 
 // NOTE(nicoche) This is copy/pasted from DataplaneProxyBuilder.matchPolicies
