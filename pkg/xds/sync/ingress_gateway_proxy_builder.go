@@ -96,7 +96,8 @@ func (p *IngressGatewayProxyBuilder) getZoneIngressCustom(
 	}
 
 	for _, zoneIngress := range zoneIngresses.Items {
-		if zoneIngress.Spec.Zone == p.zone {
+		// An empty zone means that this is the local one
+		if zoneIngress.Spec.Zone == "" {
 			// Update Ingress' Available Services
 			// This was placed as an operation of DataplaneWatchdog out of the convenience.
 			// Consider moving to the outside of this component (follow the pattern of updating VIP outbounds)
