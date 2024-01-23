@@ -159,6 +159,10 @@ test-http:
   curl --fail https://localhost:5602 --key {{client-certs-path}}/client.key --cert {{client-certs-path}}/final.pem --cacert {{ca-cert-path}}/crt.pem -H "x-koyeb-route: dp-8001_prod" -s -k --output /dev/null
   @echo
 
+  # Check that the IGW displays the "Deployment in progress" page when no dataplane matches the X-Koyeb-Route header
+  curl http://localhost:5601 -H 'x-koyeb-route: blababla' -s | grep 'We are deploying your application'
+  @echo
+
   # Check that the GLB is live
   curl --fail http://localhost:5600/health
   @echo

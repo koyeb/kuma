@@ -54,15 +54,26 @@ func RouteMatchPrefixPath(prefix string) RouteConfigurer {
 	})
 }
 
+// RouteAddResponseHeader alters the given response header value.
+func RouteAddResponseHeader(option *envoy_config_core.HeaderValueOption) RouteConfigurer {
+	if option == nil {
+		return RouteConfigureFunc(nil)
+	}
+
+	return RouteMustConfigureFunc(func(r *envoy_config_route.Route) {
+		r.ResponseHeadersToAdd = append(r.ResponseHeadersToAdd, option)
+	})
+}
+
 // RouteActionDirectResponse sets the direct response for a route
-func RouteActionDirectResponse(status uint32, respStr string) RouteConfigurer {
+func RouteActionDirectResponse(status uint32, body []byte) RouteConfigurer {
 	return RouteConfigureFunc(func(r *envoy_config_route.Route) error {
 		r.Action = &envoy_config_route.Route_DirectResponse{
 			DirectResponse: &envoy_config_route.DirectResponseAction{
 				Status: status,
 				Body: &envoy_config_core.DataSource{
-					Specifier: &envoy_config_core.DataSource_InlineString{
-						InlineString: respStr,
+					Specifier: &envoy_config_core.DataSource_InlineBytes{
+						InlineBytes: body,
 					},
 				},
 			},

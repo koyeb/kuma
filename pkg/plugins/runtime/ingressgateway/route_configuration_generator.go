@@ -2,6 +2,7 @@ package ingressgateway
 
 import (
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
+	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/routes"
 	envoy_routes "github.com/kumahq/kuma/pkg/xds/envoy/routes"
 )
 
@@ -15,7 +16,9 @@ func GenerateRouteConfig(info GatewayListenerInfo) *envoy_routes.RouteConfigurat
 
 	return envoy_routes.NewRouteConfigurationBuilder(info.Proxy.APIVersion, info.Listener.ResourceName).
 		Configure(
-			envoy_routes.CommonRouteConfiguration(),
+			//NOTE(nicoche): we have to expand this. The default is 4096 bytes. However, we embed
+			// a full HTML page that we send over as a direct response in some cases.
+			routes.CommonRouteConfiguration(uint32(32768)),
 			envoy_routes.IgnorePortInHostMatching(),
 			// TODO(jpeach) propagate merged listener tags.
 			// Ideally we would propagate the tags header

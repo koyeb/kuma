@@ -86,14 +86,6 @@ func newHTTPFilterChain(xdsCtx xds_context.Context, info GatewayListenerInfo) *e
 		// We want to keep those connections live because they could be long-lived (e.g. websockets)
 
 		envoy_listeners.HttpDynamicRoute(info.Listener.ResourceName),
-		// TODO(nicoche)
-		// envoy_listeners.MaxConnectAttempts(&defaultRetryPolicy),
-		// envoy_listeners.LocalReplyConfig(
-		//	mapper503To502,
-		//	// If X-KOYEB-ROUTE does not fit to an existing cluster, display
-		//	// a custom HTML page and a 503 error code
-		//	igwFallbackNoClusterHeader,
-		// ),
 	)
 
 	// Add edge proxy recommendations.

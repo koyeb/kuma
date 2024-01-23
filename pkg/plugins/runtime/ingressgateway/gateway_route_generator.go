@@ -2,17 +2,19 @@ package ingressgateway
 
 import (
 	"fmt"
+	"net/http"
 	"sort"
 
-	"golang.org/x/exp/maps"
-
+	envoy_config_core "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
+	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/http_pages"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/route"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	"github.com/kumahq/kuma/pkg/xds/envoy/tls"
 	"github.com/kumahq/kuma/pkg/xds/generator/zoneproxy"
+	"golang.org/x/exp/maps"
 )
 
 func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error) {
@@ -112,5 +114,35 @@ func GenerateRouteBuilders(proxy *core_xds.Proxy) ([]*route.RouteBuilder, error)
 		}
 	}
 
+	routeBuilders = append(routeBuilders, generateNoDestinationRouteBuilder())
+
 	return routeBuilders, nil
+}
+
+// In case we receive a request with X-Koyeb-Route set, it means that the GLB
+// let it go through. It means that the target service is starting, healthy
+// or unhealthy.
+//   * If the target service is healthy, a cluster will be defined and hence the
+//     request will be caught by the block before this one
+//   * If the target service is starting or unhealthy, the request will not be
+//     caught until now. The following route builder will catch it and return a
+//     custom 503 page.
+//     We return a 503 because our CDN remaps 502s to custom pages that we
+//     upload.
+//
+// Note that this route might catch some other requests which we do not want. For
+// example, if Kuma considers the destination dataplanes as unhealthy (e.g.
+// instance died unexpectedly), this will be matched. This is a known limitation
+func generateNoDestinationRouteBuilder() *route.RouteBuilder {
+	routeBuilder := &route.RouteBuilder{}
+
+	routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
+	routeBuilder.Configure(route.RouteMatchPresentHeader("X-KOYEB-ROUTE", true))
+	routeBuilder.Configure(route.RouteActionDirectResponse(http.StatusServiceUnavailable, http_pages.RouteNotPropagated))
+	routeBuilder.Configure(route.RouteAddResponseHeader(&envoy_config_core.HeaderValueOption{Header: &envoy_config_core.HeaderValue{
+		Key:   "Content-Type",
+		Value: "text/html; charset=UTF-8",
+	}}))
+
+	return routeBuilder
 }

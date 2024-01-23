@@ -55,7 +55,7 @@ func GenerateVirtualHost(xdsCtx xds_context.Context, proxy *core_xds.Proxy, rout
 func getHealthRouteBuilder() *route.RouteBuilder {
 	routeBuilder := &route.RouteBuilder{}
 	routeBuilder.Configure(route.RouteMatchPrefixPath("/health"))
-	routeBuilder.Configure(route.RouteActionDirectResponse(http.StatusOK, "OK"))
+	routeBuilder.Configure(route.RouteActionDirectResponse(http.StatusOK, []byte("OK")))
 
 	return routeBuilder
 }
@@ -63,7 +63,7 @@ func getHealthRouteBuilder() *route.RouteBuilder {
 func getFallbackRouteBuilder() *route.RouteBuilder {
 	routeBuilder := &route.RouteBuilder{}
 	routeBuilder.Configure(route.RouteMatchPrefixPath("/"))
-	routeBuilder.Configure(route.RouteActionDirectResponse(http.StatusBadGateway, "No supported routes for this path"))
+	routeBuilder.Configure(route.RouteActionDirectResponse(http.StatusBadGateway, []byte("No supported routes for this path")))
 
 	return routeBuilder
 }
