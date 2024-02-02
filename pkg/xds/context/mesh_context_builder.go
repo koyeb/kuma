@@ -199,6 +199,8 @@ func (m *meshContextBuilder) Build(ctx context.Context, meshName string) (MeshCo
 }
 
 func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string, latestMeshCtx *MeshContext) (*MeshContext, error) {
+	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
+
 	globalContext, err := m.BuildGlobalContextIfChanged(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -275,6 +277,8 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	if latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
 		return latestMeshCtx, nil
 	}
+
+	l.Info("latest mesh context hash is different than computed hash, recomputing", "mesh", meshName)
 
 	dataplanes := resources.Dataplanes().Items
 	dataplanesByName := make(map[string]*core_mesh.DataplaneResource, len(dataplanes))
