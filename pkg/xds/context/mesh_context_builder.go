@@ -360,7 +360,7 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	changedTypes, ok := m.changedTypesByMesh[meshName]
 	if !ok || len(changedTypes) == 0 {
 		// No occurence of this mesh in changed types. Let's re-use latest base mesh context
-		l.Info("no resource changed, re-using latest base mesh context to build mesh context", "mesh", meshName)
+		// l.Info("no resource changed, re-using latest base mesh context to build mesh context", "mesh", meshName)
 		return latest, nil
 	}
 
