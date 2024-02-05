@@ -15,4 +15,5 @@ mesh: abc
 name: k-mesh-dns-internal
 selectors:
 - match:
-    kuma.io/service: "*"
+    koyeb.com/mesh: abc
+

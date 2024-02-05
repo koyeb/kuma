@@ -16,9 +16,11 @@ networking:
         koyeb.com/region: par
         koyeb.com/port: "8001"
         koyeb.com/service-name: dp-8001
+        deploy: "active"
         koyeb.com/global-deployment: "active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http
+        koyeb.com/mesh: abc
     - port: 9932
       servicePort: 8002
       serviceProbe:

@@ -248,7 +248,7 @@ dp-container2:
   docker run -p 8012:5678 hashicorp/http-echo -text="ERROR!! I'm a leftover container for a service. I do not have the right koyeb.com/global-deployment tag, hence I should not receive any request!"
 
 
-dp: _build-dp (_inject_ca "abc") (_inject_ca "default")
+dp-abc: _build-dp (_inject_ca "abc") (_inject_ca "default")
   # Upsert default mesh
   cat ./koyeb/samples/mesh-default/mesh.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
 
@@ -271,4 +271,25 @@ dp: _build-dp (_inject_ca "abc") (_inject_ca "default")
   {{dev-kuma-dp}} run \
     --dataplane-token-file /tmp/offline-token-dp \
     --dataplane-file=./koyeb/samples/mesh-abc/dp.yaml \
+    --cp-address https://localhost:5678
+
+dp-def: _build-dp (_inject_ca "def")
+  # Upsert default mesh
+  cat ./koyeb/samples/mesh-default/mesh.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
+
+  # Upsert def mesh
+  cat ./koyeb/samples/mesh-def/mesh.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
+  # Upsert def Virtual Outbounds
+  cat ./koyeb/samples/mesh-def/virtual-outbound-internal.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
+  cat ./koyeb/samples/mesh-def/virtual-outbound-koyeb.yaml | {{kumactl}} apply --config-file {{kumactl-configs}}/global-cp.yaml -f -
+
+  # Wait some time for the mesh to be propagated to the zonal CP...
+  sleep 2
+
+  # Generate and sign (offline) a token for the dataplane instance
+  {{kumactl}}  generate dataplane-token --mesh def --valid-for 720h --signing-key-path {{dp-token-signing-key-path}}/key-private.pem --config-file {{kumactl-configs}}/par1-cp.yaml --kid key-1 > /tmp/offline-token-dp
+  # Run the dataplane
+  {{dev-kuma-dp}} run \
+    --dataplane-token-file /tmp/offline-token-dp \
+    --dataplane-file=./koyeb/samples/mesh-def/dp.yaml \
     --cp-address https://localhost:5678

@@ -11,8 +11,8 @@ conf:
       tagKey: koyeb.com/service-name
     - name: kumaservice
       tagKey: kuma.io/service
-mesh: abc
+mesh: def
 name: k-mesh-dns-koyeb
 selectors:
 - match:
-    koyeb.com/mesh: abc
+    koyeb.com/mesh: def
