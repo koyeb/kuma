@@ -278,7 +278,11 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 		return latestMeshCtx, nil
 	}
 
-	l.Info("latest mesh context hash is different than computed hash, recomputing", "mesh", meshName)
+	if latestMeshCtx == nil {
+		l.Info("mesh context never computed for this mesh, computing", "mesh", meshName)
+	} else {
+		l.Info("latest mesh context hash is different than computed hash, recomputing", "mesh", meshName)
+	}
 
 	dataplanes := resources.Dataplanes().Items
 	dataplanesByName := make(map[string]*core_mesh.DataplaneResource, len(dataplanes))
