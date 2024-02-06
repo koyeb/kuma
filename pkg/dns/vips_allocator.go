@@ -353,7 +353,11 @@ func (d *VIPsAllocator) buildVirtualOutboundMeshView(
 				errs = multierr.Append(errs, addDefault(outboundSet, inbound.GetService(), 0))
 			}
 			for _, vob := range Match(virtualOutbounds, inbound.Tags) {
-				addFromVirtualOutbound(outboundSet, vob, inbound.Tags, dp.Descriptor().Name, dp.Meta.GetName())
+				err := addFromVirtualOutbound(outboundSet, vob, inbound.Tags, dp.Descriptor().Name, dp.Meta.GetName())
+				if err != nil && errors.Is(err, vips.CustomErr) {
+					Log.WithValues("Dataplane", dp.Meta.GetName()).
+						Info("failed to call Add()", "reason", err.Error())
+				}
 			}
 		}
 	}
@@ -367,7 +371,11 @@ func (d *VIPsAllocator) buildVirtualOutboundMeshView(
 				errs = multierr.Append(errs, addDefault(outboundSet, service.GetTags()[mesh_proto.ServiceTag], 0))
 			}
 			for _, vob := range Match(virtualOutbounds, service.Tags) {
-				addFromVirtualOutbound(outboundSet, vob, service.Tags, zi.Descriptor().Name, zi.Meta.GetName())
+				err := addFromVirtualOutbound(outboundSet, vob, service.Tags, zi.Descriptor().Name, zi.Meta.GetName())
+				if err != nil && errors.Is(err, vips.CustomErr) {
+					Log.WithValues("zoneIngress", zi.Meta.GetName()).
+						Info("failed to call Add()", "reason", err.Error())
+				}
 			}
 		}
 	}
@@ -391,7 +399,7 @@ func (d *VIPsAllocator) buildVirtualOutboundMeshView(
 			})
 			if addError != nil {
 				if errors.Is(addError, vips.CustomErr) {
-					Log.WithValues("externlService", es.GetMeta().GetName()).
+					Log.WithValues("externalService", es.GetMeta().GetName()).
 						Info("failed to call Add()", "reason", addError.Error())
 				} else {
 					errs = multierr.Append(errs, errors.Wrapf(addError, "cannot add outbound for external service '%s'", es.GetMeta().GetName()))
@@ -399,7 +407,11 @@ func (d *VIPsAllocator) buildVirtualOutboundMeshView(
 			}
 		}
 		for _, vob := range Match(virtualOutbounds, tags) {
-			addFromVirtualOutbound(outboundSet, vob, tags, es.Descriptor().Name, es.Meta.GetName())
+			err := addFromVirtualOutbound(outboundSet, vob, tags, es.Descriptor().Name, es.Meta.GetName())
+			if err != nil && errors.Is(err, vips.CustomErr) {
+				Log.WithValues("externalService", es.Meta.GetName()).
+					Info("failed to call Add()", "reason", err.Error())
+			}
 		}
 	}
 
@@ -467,18 +479,18 @@ func AllocateVIPs(global *vips.GlobalView, voView *vips.VirtualOutboundMeshView)
 	return errs
 }
 
-func addFromVirtualOutbound(outboundSet *vips.VirtualOutboundMeshView, vob *core_mesh.VirtualOutboundResource, tags map[string]string, resourceType model.ResourceType, resourceName string) {
+func addFromVirtualOutbound(outboundSet *vips.VirtualOutboundMeshView, vob *core_mesh.VirtualOutboundResource, tags map[string]string, resourceType model.ResourceType, resourceName string) error {
 	host, err := vob.EvalHost(tags)
 	l := Log.WithValues("mesh", vob.Meta.GetMesh(), "virtualOutboundName", vob.Meta.GetName(), "type", resourceType, "name", resourceName, "tags", tags)
 	if err != nil {
 		l.Info("Failed evaluating host template", "reason", err.Error())
-		return
+		return nil
 	}
 
 	port, err := vob.EvalPort(tags)
 	if err != nil {
 		l.Info("Failed evaluating port template", "reason", err.Error())
-		return
+		return nil
 	}
 
 	err = outboundSet.Add(vips.NewFqdnEntry(host), vips.OutboundEntry{
@@ -488,7 +500,12 @@ func addFromVirtualOutbound(outboundSet *vips.VirtualOutboundMeshView, vob *core
 	})
 	if err != nil {
 		l.Info("Failed adding generated outbound in addFromVirtualOutbound", "reason", err.Error())
+		if errors.Is(err, vips.CustomErr) {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func addDefault(outboundSet *vips.VirtualOutboundMeshView, service string, port uint32) error {
