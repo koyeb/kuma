@@ -2,7 +2,6 @@ package vips
 
 import (
 	"fmt"
-	"errors"
 	"net"
 	"sort"
 
@@ -37,8 +36,6 @@ func (vo *VirtualOutboundMeshView) Get(entry HostnameEntry) *VirtualOutbound {
 	return vo.byHostname[entry]
 }
 
-var CustomErr error = errors.New("triggered")
-
 func (vo *VirtualOutboundMeshView) Add(entry HostnameEntry, outbound OutboundEntry) error {
 	if vo.byHostname[entry] == nil {
 		vo.byHostname[entry] = &VirtualOutbound{Outbounds: []OutboundEntry{outbound}}
@@ -58,7 +55,7 @@ func (vo *VirtualOutboundMeshView) Add(entry HostnameEntry, outbound OutboundEnt
 				return nil
 			} else {
 				logger.Error(fmt.Errorf("can't add %s:%d from %s because it's already used by entity defined in:'%s'", entry.Name, outbound.Port, outbound.Origin, existingOutbound.Origin), "failed to generate DNS entry")
-				return CustomErr
+				return nil
 			}
 		}
 	}

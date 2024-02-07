@@ -390,12 +390,7 @@ func (d *VIPsAllocator) buildVirtualOutboundMeshView(
 				Origin: vips.OriginHost(es.GetMeta().GetName()),
 			})
 			if addError != nil {
-				if errors.Is(addError, vips.CustomErr) {
-					Log.WithValues("externlService", es.GetMeta().GetName()).
-						Info("failed to call Add()", "reason", addError.Error())
-				} else {
-					errs = multierr.Append(errs, errors.Wrapf(addError, "cannot add outbound for external service '%s'", es.GetMeta().GetName()))
-				}
+				errs = multierr.Append(errs, errors.Wrapf(addError, "cannot add outbound for external service '%s'", es.GetMeta().GetName()))
 			}
 		}
 		for _, vob := range Match(virtualOutbounds, tags) {
@@ -487,24 +482,14 @@ func addFromVirtualOutbound(outboundSet *vips.VirtualOutboundMeshView, vob *core
 		Origin: vips.OriginVirtualOutbound(vob.Meta.GetName()),
 	})
 	if err != nil {
-		l.Info("Failed adding generated outbound in addFromVirtualOutbound", "reason", err.Error())
+		l.Info("Failed adding generated outbound", "reason", err.Error())
 	}
 }
 
 func addDefault(outboundSet *vips.VirtualOutboundMeshView, service string, port uint32) error {
-	err := outboundSet.Add(vips.NewServiceEntry(service), vips.OutboundEntry{
+	return outboundSet.Add(vips.NewServiceEntry(service), vips.OutboundEntry{
 		TagSet: map[string]string{mesh_proto.ServiceTag: service},
 		Origin: vips.OriginService,
 		Port:   port,
 	})
-	if err != nil {
-		if errors.Is(err, vips.CustomErr) {
-			Log.Error(err, "failed to call Add()", "outboundSet", outboundSet, "service", service, "port", port)
-			return nil
-		}
-
-		return err
-	}
-
-	return nil
 }
