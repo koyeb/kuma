@@ -206,22 +206,23 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 		return nil, err
 	}
 
-	// Check hashCache first for an existing mesh latestContext
-	var latestBaseMeshContext *BaseMeshContext
-	if m.hashCacheBaseMeshContext != nil {
-		if cached, ok := m.hashCacheBaseMeshContext.Get(meshName); ok {
-			latestBaseMeshContext = cached.(*BaseMeshContext)
-		}
-	}
-
 	var baseMeshContext *BaseMeshContext
 	if useReactiveBuildBaseMeshContext() {
+
+		// Check hashCache first for an existing mesh latestContext
+		var latestBaseMeshContext *BaseMeshContext
+		if m.hashCacheBaseMeshContext != nil {
+			if cached, ok := m.hashCacheBaseMeshContext.Get(meshName); ok {
+				latestBaseMeshContext = cached.(*BaseMeshContext)
+			}
+		}
+
 		baseMeshContext, err = m.BuildBaseMeshContextIfChangedV2(ctx, meshName, latestBaseMeshContext)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		baseMeshContext, err = m.BuildBaseMeshContextIfChanged(ctx, meshName, latestBaseMeshContext)
+		baseMeshContext, err = m.BuildBaseMeshContextIfChanged(ctx, meshName, nil)
 		if err != nil {
 			return nil, err
 		}
