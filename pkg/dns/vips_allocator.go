@@ -370,6 +370,10 @@ func (d *VIPsAllocator) buildVirtualOutboundMeshView(
 			if service.Mesh == mesh && d.serviceVipEnabled {
 				errs = multierr.Append(errs, addDefault(outboundSet, service.GetTags()[mesh_proto.ServiceTag], 0))
 			}
+			// NOTE(nicoche): check the impact of this change
+			if service.Mesh != mesh {
+				continue
+			}
 			for _, vob := range Match(virtualOutbounds, service.Tags) {
 				err := addFromVirtualOutbound(outboundSet, vob, service.Tags, zi.Descriptor().Name, zi.Meta.GetName())
 				if err != nil && errors.Is(err, vips.CustomErr) {
