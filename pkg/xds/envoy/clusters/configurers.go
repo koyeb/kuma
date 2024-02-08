@@ -204,3 +204,12 @@ func HttpDownstreamProtocolOptions() ClusterBuilderOpt {
 		builder.AddConfigurer(&v3.HttpDownstreamConfigurer{})
 	})
 }
+
+func PanicMode(value float64) ClusterBuilderOpt {
+	return ClusterBuilderOptFunc(func(builder *ClusterBuilder) {
+		builder.AddConfigurer(&v3.PanicModeConfigurer{
+			IsOverriden: true,
+			Value: value,
+		})
+	})
+}

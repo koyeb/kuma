@@ -4,20 +4,50 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	envoy_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"golang.org/x/exp/maps"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
+	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
 	"github.com/kumahq/kuma/pkg/xds/envoy/clusters"
 	envoy_endpoints "github.com/kumahq/kuma/pkg/xds/envoy/endpoints"
 	envoy_tags "github.com/kumahq/kuma/pkg/xds/envoy/tags"
 	"github.com/kumahq/kuma/pkg/xds/generator/zoneproxy"
 )
+
+var ClusterCircuitBreakerSettings = core_mesh.CircuitBreakerResource{
+	Spec: &mesh_proto.CircuitBreaker{
+		Conf: &mesh_proto.CircuitBreaker_Conf{
+			Thresholds: &mesh_proto.CircuitBreaker_Conf_Thresholds{
+				MaxConnections:     util_proto.UInt32(1024),
+				MaxPendingRequests: util_proto.UInt32(1024),
+				MaxRequests:        util_proto.UInt32(1024),
+				MaxRetries:         util_proto.UInt32(1024),
+			},
+			SplitExternalAndLocalErrors: true,
+			BaseEjectionTime:            durationpb.New(120 * time.Second),
+			MaxEjectionPercent:          &wrappers.UInt32Value{Value: 90},
+			Detectors: &mesh_proto.CircuitBreaker_Conf_Detectors{
+				GatewayErrors: &mesh_proto.CircuitBreaker_Conf_Detectors_Errors{Consecutive: &wrappers.UInt32Value{Value: 3}},
+				// make sure that it's smaller than the value of `MaxRetries` in retry policy
+				LocalErrors: &mesh_proto.CircuitBreaker_Conf_Detectors_Errors{Consecutive: &wrappers.UInt32Value{Value: 2}},
+				Failure: &mesh_proto.CircuitBreaker_Conf_Detectors_Failure{
+					RequestVolume: &wrappers.UInt32Value{Value: 5},
+					MinimumHosts:  &wrappers.UInt32Value{Value: 1},
+					Threshold:     &wrappers.UInt32Value{Value: 85},
+				},
+			},
+		},
+	},
+}
 
 type ClusterGenerator struct{}
 
@@ -82,6 +112,9 @@ func generateEdsCluster(
 		clusters.CrossMeshClientSideMTLS(proxy.SecretsTracker, sourceMesh, targetMesh, service, true, tagSlice),
 		clusters.ConnectionBufferLimit(DefaultConnectionBuffer),
 		clusters.HttpDownstreamProtocolOptions(),
+		clusters.CircuitBreaker(&ClusterCircuitBreakerSettings),
+		clusters.OutlierDetection(&ClusterCircuitBreakerSettings),
+		clusters.PanicMode(0),
 	)
 
 	r, err := buildClusterResource(clusterBuilder)
