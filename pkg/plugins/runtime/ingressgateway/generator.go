@@ -159,7 +159,7 @@ func (g Generator) Generate(
 		}
 		resources.AddSet(cdsResources)
 
-		ldsResources, limit, err := g.generateLDS(xdsCtx, info)
+		ldsResources, limit, err := g.generateLDS(xdsCtx, info, proxy)
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +199,8 @@ func (g Generator) generateRTDS(limits []RuntimeResoureLimitListener) *core_xds.
 	return res
 }
 
-func (g Generator) generateLDS(xdsCtx xds_context.Context, info GatewayListenerInfo) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
+func (g Generator) generateLDS(xdsCtx xds_context.Context, info GatewayListenerInfo, proxy *core_xds.Proxy) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
+	log.Info(fmt.Sprintf("Running generateLDS() for dataplane %q", proxy.Dataplane.Meta.GetName()))
 	resources := core_xds.NewResourceSet()
 
 	listenerBuilder, limit := GenerateListener(info)
@@ -233,6 +234,7 @@ func (g Generator) generateCDS(
 	xdsCtx xds_context.Context,
 	proxy *core_xds.Proxy,
 ) (*core_xds.ResourceSet, error) {
+	log.Info(fmt.Sprintf("Running generateCDS() for dataplane %q", proxy.Dataplane.Meta.GetName()))
 	resources := core_xds.NewResourceSet()
 
 	clusterRes, err := g.ClusterGenerator.GenerateClusters(ctx, xdsCtx, proxy)
@@ -245,6 +247,7 @@ func (g Generator) generateCDS(
 }
 
 func (g Generator) generateRDS(xdsCtx xds_context.Context, proxy *core_xds.Proxy, info GatewayListenerInfo) (*core_xds.ResourceSet, error) {
+	log.Info(fmt.Sprintf("Running generateRDS() for dataplane %q", proxy.Dataplane.Meta.GetName()))
 	switch info.Listener.Protocol {
 	case mesh_proto.MeshGateway_Listener_HTTPS,
 		mesh_proto.MeshGateway_Listener_HTTP:
