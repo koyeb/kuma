@@ -44,8 +44,16 @@ func (d *dataplaneWatchdogFactory) New(dpKey model.ResourceKey) util_watchdog.Wa
 			if err != nil {
 				return err
 			}
+
+			proxyType := result.ProxyType
+			if dpKey.IsKoyebIngressGateway() {
+				proxyType = "ingress-gateway"
+			} else if dpKey.IsKoyebGlobalLoadBalancer() {
+				proxyType = "global-load-balancer"
+			}
+
 			d.xdsMetrics.XdsGenerations.
-				WithLabelValues(string(result.ProxyType), string(result.Status)).
+				WithLabelValues(string(proxyType), string(result.Status)).
 				Observe(float64(core.Now().Sub(start).Milliseconds()))
 			return nil
 		},
