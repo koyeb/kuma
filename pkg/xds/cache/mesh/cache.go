@@ -28,7 +28,7 @@ type Cache struct {
 // cleanupTime is the time after which the mesh context is removed from
 // the longer TTL cache.
 // It exists to ensure contexts of deleted Meshes are eventually cleaned up.
-const cleanupTime = time.Minute
+const cleanupTime = 15 * time.Minute
 
 func NewCache(
 	expirationTime time.Duration,
