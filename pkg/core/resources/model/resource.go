@@ -82,12 +82,27 @@ type Resource interface {
 
 type ResourceHasher interface {
 	Hash() []byte
+	HashForMesh(meshName string) []byte
 }
 
 func Hash(resource Resource) []byte {
 	if r, ok := resource.(ResourceHasher); ok {
 		return r.Hash()
 	}
+	return HashMeta(resource)
+}
+
+func HashForMesh(resource Resource, meshName string) []byte {
+	if r, ok := resource.(ResourceHasher); ok {
+		return r.HashForMesh(meshName)
+	}
+
+	meta := resource.GetMeta()
+	if meta.GetMesh() != meshName {
+		return []byte{}
+	}
+
+	// This resource targets the mesh given as parameter. Go forward
 	return HashMeta(resource)
 }
 
@@ -423,6 +438,14 @@ func ResourceListHash(rl ResourceList) []byte {
 	hasher := fnv.New128()
 	for _, entity := range rl.GetItems() {
 		_, _ = hasher.Write(Hash(entity))
+	}
+	return hasher.Sum(nil)
+}
+
+func ResourceListHashForMesh(rl ResourceList, meshName string) []byte {
+	hasher := fnv.New128()
+	for _, entity := range rl.GetItems() {
+		_, _ = hasher.Write(HashForMesh(entity, meshName))
 	}
 	return hasher.Sum(nil)
 }
