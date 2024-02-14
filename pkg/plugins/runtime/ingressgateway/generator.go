@@ -148,7 +148,7 @@ func (g Generator) Generate(
 ) (*core_xds.ResourceSet, error) {
 	resources := core_xds.NewResourceSet()
 
-	log.Info(fmt.Sprintf("Running Generate() for dataplane %q", proxy.Dataplane.Meta.GetName()))
+	log.V(1).Info(fmt.Sprintf("Running Generate() for dataplane %q", proxy.Dataplane.Meta.GetName()))
 
 	var limits []RuntimeResoureLimitListener
 
