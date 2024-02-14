@@ -35,18 +35,17 @@ import (
 var logger = core.Log.WithName("xds").WithName("context")
 
 type meshContextBuilder struct {
-	rm                         manager.ReadOnlyResourceManager
-	typeSet                    map[core_model.ResourceType]struct{}
-	ipFunc                     lookup.LookupIPFunc
-	zone                       string
-	vipsPersistence            *vips.Persistence
-	topLevelDomain             string
-	vipPort                    uint32
-	rsGraphBuilder             ReachableServicesGraphBuilder
-	changedTypesByMesh         map[string]map[core_model.ResourceType]struct{}
-	eventBus                   events.EventBus
-	hashCacheBaseMeshContext   *cache.Cache
-	hashCacheGlobalMeshContext *cache.Cache
+	rm                       manager.ReadOnlyResourceManager
+	typeSet                  map[core_model.ResourceType]struct{}
+	ipFunc                   lookup.LookupIPFunc
+	zone                     string
+	vipsPersistence          *vips.Persistence
+	topLevelDomain           string
+	vipPort                  uint32
+	rsGraphBuilder           ReachableServicesGraphBuilder
+	changedTypesByMesh       map[string]map[core_model.ResourceType]struct{}
+	eventBus                 events.EventBus
+	hashCacheBaseMeshContext *cache.Cache
 }
 
 // MeshContextBuilder
@@ -75,8 +74,7 @@ type MeshContextBuilder interface {
 // cleanupTime is the time after which the mesh context is removed from
 // the longer TTL cache.
 // It exists to ensure contexts of deleted Meshes are eventually cleaned up.
-const baseMeshContextCleanupTime = 10 * time.Minute
-const globalMeshContextCleanupTime = 1 * time.Second
+const cleanupTime = 10 * time.Minute
 
 type MeshContextBuilderComponent interface {
 	MeshContextBuilder
@@ -100,18 +98,17 @@ func NewMeshContextBuilderComponent(
 	}
 
 	return &meshContextBuilder{
-		rm:                         rm,
-		typeSet:                    typeSet,
-		ipFunc:                     ipFunc,
-		zone:                       zone,
-		vipsPersistence:            vipsPersistence,
-		topLevelDomain:             topLevelDomain,
-		vipPort:                    vipPort,
-		rsGraphBuilder:             rsGraphBuilder,
-		changedTypesByMesh:         map[string]map[core_model.ResourceType]struct{}{},
-		eventBus:                   eventBus,
-		hashCacheBaseMeshContext:   cache.New(baseMeshContextCleanupTime, time.Duration(int64(float64(baseMeshContextCleanupTime)*0.9))),
-		hashCacheGlobalMeshContext: cache.New(globalMeshContextCleanupTime, time.Duration(int64(float64(baseMeshContextCleanupTime)*0.9))),
+		rm:                       rm,
+		typeSet:                  typeSet,
+		ipFunc:                   ipFunc,
+		zone:                     zone,
+		vipsPersistence:          vipsPersistence,
+		topLevelDomain:           topLevelDomain,
+		vipPort:                  vipPort,
+		rsGraphBuilder:           rsGraphBuilder,
+		changedTypesByMesh:       map[string]map[core_model.ResourceType]struct{}{},
+		eventBus:                 eventBus,
+		hashCacheBaseMeshContext: cache.New(cleanupTime, time.Duration(int64(float64(cleanupTime)*0.9))),
 	}
 }
 
@@ -204,26 +201,9 @@ func (m *meshContextBuilder) Build(ctx context.Context, meshName string) (MeshCo
 func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string, latestMeshCtx *MeshContext) (*MeshContext, error) {
 	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
 
-	var globalContext *GlobalContext
-	var err error
-	if m.hashCacheGlobalMeshContext != nil {
-		cached, ok := m.hashCacheGlobalMeshContext.Get("")
-		if ok {
-			globalContext = cached.(*GlobalContext)
-		} else {
-			globalContext, err = m.BuildGlobalContextIfChanged(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			m.hashCacheGlobalMeshContext.SetDefault("", globalContext)
-		}
-
-	} else {
-		globalContext, err = m.BuildGlobalContextIfChanged(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
+	globalContext, err := m.BuildGlobalContextIfChanged(ctx, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	var baseMeshContext *BaseMeshContext
