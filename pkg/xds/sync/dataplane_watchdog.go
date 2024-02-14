@@ -2,7 +2,6 @@ package sync
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -113,8 +112,6 @@ func (d *DataplaneWatchdog) Cleanup() error {
 // The main problem is that syncDataplane operates on a single mesh while we
 // want to operate on all meshes, like an Ingress.
 func (d *DataplaneWatchdog) syncIngressGateway(ctx context.Context, metadata *core_xds.DataplaneMetadata) (SyncResult, error) {
-	d.log.Info(fmt.Sprintf("Running syncIngressGateway() for dataplane %q", d.key.Name))
-	d.log.Info(fmt.Sprintf("Running AggregateMeshContexts() for dataplane %q", d.key.Name))
 	aggregatedMeshCtxs, err := xds_context.AggregateMeshContexts(ctx, d.ResManager, d.MeshCache.GetMeshContext)
 	if err != nil {
 		return SyncResult{}, err
@@ -137,7 +134,6 @@ func (d *DataplaneWatchdog) syncIngressGateway(ctx context.Context, metadata *co
 		d.log.V(1).Info("snapshot hash updated, reconcile", "prev", d.lastHash, "current", aggregatedMeshCtxs.Hash)
 	}
 
-	d.log.Info(fmt.Sprintf("Running IngressGatewayProxyBuilder.Build() for dataplane %q", d.key.Name))
 	proxy, err := d.IngressGatewayProxyBuilder.Build(ctx, d.key, aggregatedMeshCtxs)
 	if err != nil {
 		return SyncResult{}, err
@@ -152,7 +148,6 @@ func (d *DataplaneWatchdog) syncIngressGateway(ctx context.Context, metadata *co
 		d.EnvoyCpCtx.Secrets.Cleanup(d.key) // we need to cleanup secrets if mtls is disabled
 	}
 	proxy.Metadata = metadata
-	d.log.Info(fmt.Sprintf("Running Reconcile() for dataplane %q", d.key.Name))
 	changed, err := d.DataplaneReconciler.Reconcile(ctx, *envoyCtx, proxy)
 	if err != nil {
 		return SyncResult{}, err
