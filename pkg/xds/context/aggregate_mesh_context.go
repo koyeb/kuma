@@ -2,7 +2,6 @@ package context
 
 import (
 	"fmt"
-	"math/rand"
 	"context"
 	"time"
 	"golang.org/x/exp/maps"
@@ -37,7 +36,7 @@ func AggregateMeshContexts(
 	resManager manager.ReadOnlyResourceManager,
 	fetcher meshContextFetcher,
 ) (AggregatedMeshContexts, error) {
-	l := logger.WithName("aggregate-mesh-contexts").WithName(fmt.Sprintf("%d", rand.Intn(10000)))
+	l := logger.WithName("aggregate-mesh-contexts")
 	l.Info("AggregateMeshContexts(): listing meshes")
 
 	var meshList core_mesh.MeshResourceList
