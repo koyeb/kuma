@@ -231,16 +231,3 @@ func (d *DataplaneResource) Hash() []byte {
 	_, _ = hasher.Write([]byte(d.Spec.GetNetworking().GetAdvertisedAddress()))
 	return hasher.Sum(nil)
 }
-
-func (d *DataplaneResource) HashForMesh(meshName string) []byte {
-	meta := d.GetMeta()
-	if meta.GetMesh() != meshName {
-		return []byte{}
-	}
-
-	hasher := fnv.New128a()
-	_, _ = hasher.Write(model.HashMeta(d))
-	_, _ = hasher.Write([]byte(d.Spec.GetNetworking().GetAddress()))
-	_, _ = hasher.Write([]byte(d.Spec.GetNetworking().GetAdvertisedAddress()))
-	return hasher.Sum(nil)
-}
