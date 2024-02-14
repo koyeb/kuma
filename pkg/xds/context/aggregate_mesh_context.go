@@ -8,12 +8,15 @@ import (
 	"encoding/base64"
 	"slices"
 
+	"github.com/kumahq/kuma/pkg/core"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	"github.com/kumahq/kuma/pkg/core/resources/manager"
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 	core_store "github.com/kumahq/kuma/pkg/core/resources/store"
 	"github.com/kumahq/kuma/pkg/xds/cache/sha256"
 )
+
+var logger = core.Log.WithName("xds-server")
 
 type meshContextFetcher = func(ctx context.Context, meshName string) (MeshContext, error)
 
@@ -28,7 +31,7 @@ func getReport(meshPerTiming map[time.Duration][]string) string {
 		distribution = append(distribution, fmt.Sprintf("%d (%s)", duration, meshPerTiming[duration]))
 	}
 
-	return fmt.Sprintf("Distribution: %s.", distribution)
+	return fmt.Sprintf("Median duration: %d. Mean duration: %d. Distribution: %s.", distribution)
 }
 
 func AggregateMeshContexts(
