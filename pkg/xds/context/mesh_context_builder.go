@@ -74,7 +74,7 @@ type MeshContextBuilder interface {
 // cleanupTime is the time after which the mesh context is removed from
 // the longer TTL cache.
 // It exists to ensure contexts of deleted Meshes are eventually cleaned up.
-const cleanupTime = 10 * time.Minute
+const cleanupTime = 45 * time.Minute
 
 type MeshContextBuilderComponent interface {
 	MeshContextBuilder
