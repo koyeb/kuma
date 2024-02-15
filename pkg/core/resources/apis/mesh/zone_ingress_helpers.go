@@ -1,11 +1,8 @@
 package mesh
 
 import (
-	"fmt"
-	"golang.org/x/exp/maps"
 	"hash/fnv"
 	"net"
-	"sort"
 	"strconv"
 
 	"github.com/kumahq/kuma/pkg/core/resources/model"
@@ -70,26 +67,6 @@ func (r *ZoneIngressResource) HashForMesh(meshName string) []byte {
 	// Hash spec
 	_, _ = hasher.Write([]byte(r.Spec.GetNetworking().GetAddress()))
 	_, _ = hasher.Write([]byte(r.Spec.GetNetworking().GetAdvertisedAddress()))
-
-	// Hash changes to the mesh
-	for _, service := range r.Spec.GetAvailableServices() {
-		if service.GetMesh() != meshName {
-			continue
-		}
-
-		_, _ = hasher.Write([]byte(service.GetMesh()))
-		_, _ = hasher.Write([]byte(fmt.Sprintf("%d", service.GetInstances())))
-		_, _ = hasher.Write([]byte(fmt.Sprintf("%t", service.GetExternalService())))
-
-		tags := service.GetTags()
-		tagsKeys := maps.Keys(tags)
-		sort.Strings(tagsKeys)
-
-		for _, key := range tagsKeys {
-			_, _ = hasher.Write([]byte(key))
-			_, _ = hasher.Write([]byte(tags[key]))
-		}
-	}
 
 	return hasher.Sum(nil)
 }
