@@ -90,14 +90,14 @@ var _ = Describe("hash", func() {
 		shouldChange, err := strconv.ParseBool(actions[0])
 		Expect(err).ToNot(HaveOccurred())
 
-		beforeContext, err := meshContextBuilder.BuildGlobalContextIfChanged(context.Background(), nil)
+		beforeContext, err := meshContextBuilder.BuildGlobalContextIfChanged(context.Background(), nil, "")
 		Expect(err).ToNot(HaveOccurred())
 
 		// When
 		Expect(test_store.LoadResourcesFromFile(context.Background(), resourceStore, strings.Replace(inputFile, "input", "change", 1))).To(Succeed())
 
 		// Then
-		afterContext, err := meshContextBuilder.BuildGlobalContextIfChanged(context.Background(), beforeContext)
+		afterContext, err := meshContextBuilder.BuildGlobalContextIfChanged(context.Background(), beforeContext, "")
 		Expect(err).ToNot(HaveOccurred())
 		if shouldChange {
 			Expect(afterContext.Hash()).ToNot(Equal(beforeContext.Hash()), "context didn't change when it should have")

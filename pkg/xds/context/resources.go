@@ -33,6 +33,14 @@ func (rm ResourceMap) Hash() []byte {
 	return hasher.Sum(nil)
 }
 
+func (rm ResourceMap) HashForMesh(meshName string) []byte {
+	hasher := fnv.New128a()
+	for _, k := range maps.SortedKeys(rm) {
+		hasher.Write(core_model.ResourceListHashForMesh(rm[k], meshName))
+	}
+	return hasher.Sum(nil)
+}
+
 type Resources struct {
 	MeshLocalResources ResourceMap
 	CrossMeshResources map[xds.MeshName]ResourceMap

@@ -28,7 +28,6 @@ import (
 	"github.com/kumahq/kuma/pkg/dns/vips"
 	"github.com/kumahq/kuma/pkg/events"
 	"github.com/kumahq/kuma/pkg/log"
-	"github.com/kumahq/kuma/pkg/util/maps"
 	xds_topology "github.com/kumahq/kuma/pkg/xds/topology"
 )
 
@@ -54,7 +53,7 @@ type MeshContextBuilder interface {
 
 	// BuildGlobalContextIfChanged builds GlobalContext only if `latest` is nil or hash is different
 	// If hash is the same, the return `latest`
-	BuildGlobalContextIfChanged(ctx context.Context, latest *GlobalContext) (*GlobalContext, error)
+	BuildGlobalContextIfChanged(ctx context.Context, latest *GlobalContext, meshName string) (*GlobalContext, error)
 
 	// BuildBaseMeshContextIfChanged builds BaseMeshContext only if `latest` is nil or hash is different
 	// If hash is the same, the return `latest`
@@ -201,7 +200,7 @@ func (m *meshContextBuilder) Build(ctx context.Context, meshName string) (MeshCo
 func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string, latestMeshCtx *MeshContext) (*MeshContext, error) {
 	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
 
-	globalContext, err := m.BuildGlobalContextIfChanged(ctx, nil)
+	globalContext, err := m.BuildGlobalContextIfChanged(ctx, nil, meshName)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +273,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	}
 
 	// This base64 encoding seems superfluous but keeping it for backward compatibility
-	newHash := base64.StdEncoding.EncodeToString(m.hash(globalContext, baseMeshContext, managedTypes, resources))
+	newHash := base64.StdEncoding.EncodeToString(m.hash(meshName, globalContext, baseMeshContext, managedTypes, resources))
 	if latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
 		return latestMeshCtx, nil
 	}
@@ -332,7 +331,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	}, nil
 }
 
-func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, latest *GlobalContext) (*GlobalContext, error) {
+func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, latest *GlobalContext, meshName string) (*GlobalContext, error) {
 	rmap := ResourceMap{}
 	// Only pick the global stuff
 	for t := range m.typeSet {
@@ -348,7 +347,7 @@ func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, la
 		}
 	}
 
-	newHash := rmap.Hash()
+	newHash := rmap.HashForMesh(meshName)
 	if latest != nil && bytes.Equal(newHash, latest.hash) {
 		return latest, nil
 	}
@@ -416,7 +415,7 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	// Reset changed types for this mesh
 	m.clearTypeChanged(meshName)
 
-	newHash := rmap.Hash()
+	newHash := rmap.HashForMesh(meshName)
 	if latest != nil && bytes.Equal(newHash, latest.hash) {
 		return latest, nil
 	}
@@ -473,7 +472,7 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChanged(ctx context.Context, 
 			return nil, errors.Wrap(err, "failed to build base mesh context")
 		}
 	}
-	newHash := rmap.Hash()
+	newHash := rmap.HashForMesh(meshName)
 	if latest != nil && bytes.Equal(newHash, latest.hash) {
 		return latest, nil
 	}
@@ -680,18 +679,14 @@ func (m *meshContextBuilder) decorateWithCrossMeshResources(ctx context.Context,
 	return nil
 }
 
-func (m *meshContextBuilder) hash(globalContext *GlobalContext, baseMeshContext *BaseMeshContext, managedTypes []core_model.ResourceType, resources Resources) []byte {
+func (m *meshContextBuilder) hash(meshName string, globalContext *GlobalContext, baseMeshContext *BaseMeshContext, managedTypes []core_model.ResourceType, resources Resources) []byte {
 	slices.Sort(managedTypes)
 	hasher := fnv.New128a()
 	_, _ = hasher.Write(globalContext.hash)
 	_, _ = hasher.Write(baseMeshContext.hash)
 	for _, resType := range managedTypes {
-		_, _ = hasher.Write(core_model.ResourceListHash(resources.MeshLocalResources[resType]))
+		_, _ = hasher.Write(core_model.ResourceListHashForMesh(resources.MeshLocalResources[resType], meshName))
 	}
 
-	for _, m := range maps.SortedKeys(resources.CrossMeshResources) {
-		_, _ = hasher.Write([]byte(m))
-		_, _ = hasher.Write(resources.CrossMeshResources[m].Hash())
-	}
 	return hasher.Sum(nil)
 }
