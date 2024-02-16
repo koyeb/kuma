@@ -62,6 +62,7 @@ type BuilderContext interface {
 	Access() Access
 	TokenIssuers() builtin.TokenIssuers
 	MeshContextBuilderComponent() xds_context.MeshContextBuilderComponent
+	AggregateMeshContextsComponent() *xds_context.AggregateMeshContextsComponent
 	MeshCache() *mesh.Cache
 	InterCPClientPool() *client.Pool
 	PgxConfigCustomizationFn() config.PgxConfigCustomization
@@ -72,38 +73,39 @@ var _ BuilderContext = &Builder{}
 
 // Builder represents a multi-step initialization process.
 type Builder struct {
-	cfg                kuma_cp.Config
-	cm                 component.Manager
-	rs                 core_store.CustomizableResourceStore
-	ss                 store.SecretStore
-	cs                 core_store.ResourceStore
-	txs                core_store.Transactions
-	rm                 core_manager.CustomizableResourceManager
-	rom                core_manager.ReadOnlyResourceManager
-	gis                globalinsight.GlobalInsightService
-	cam                core_ca.Managers
-	dsl                datasource.Loader
-	ext                context.Context
-	configm            config_manager.ConfigManager
-	leadInfo           component.LeaderInfo
-	lif                lookup.LookupIPFunc
-	eac                admin.EnvoyAdminClient
-	metrics            metrics.Metrics
-	erf                events.EventBus
-	apim               api_server.APIManager
-	xds                xds_runtime.XDSRuntimeContext
-	cap                secrets.CaProvider
-	dps                *dp_server.DpServer
-	kdsctx             *kds_context.Context
-	rv                 ResourceValidators
-	au                 authn.Authenticator
-	acc                Access
-	appCtx             context.Context
-	extraReportsFn     ExtraReportsFn
-	tokenIssuers       builtin.TokenIssuers
-	meshContextBuilderComponent xds_context.MeshContextBuilderComponent
-	meshCache          *mesh.Cache
-	interCpPool        *client.Pool
+	cfg                            kuma_cp.Config
+	cm                             component.Manager
+	rs                             core_store.CustomizableResourceStore
+	ss                             store.SecretStore
+	cs                             core_store.ResourceStore
+	txs                            core_store.Transactions
+	rm                             core_manager.CustomizableResourceManager
+	rom                            core_manager.ReadOnlyResourceManager
+	gis                            globalinsight.GlobalInsightService
+	cam                            core_ca.Managers
+	dsl                            datasource.Loader
+	ext                            context.Context
+	configm                        config_manager.ConfigManager
+	leadInfo                       component.LeaderInfo
+	lif                            lookup.LookupIPFunc
+	eac                            admin.EnvoyAdminClient
+	metrics                        metrics.Metrics
+	erf                            events.EventBus
+	apim                           api_server.APIManager
+	xds                            xds_runtime.XDSRuntimeContext
+	cap                            secrets.CaProvider
+	dps                            *dp_server.DpServer
+	kdsctx                         *kds_context.Context
+	rv                             ResourceValidators
+	au                             authn.Authenticator
+	acc                            Access
+	appCtx                         context.Context
+	extraReportsFn                 ExtraReportsFn
+	tokenIssuers                   builtin.TokenIssuers
+	meshContextBuilderComponent    xds_context.MeshContextBuilderComponent
+	aggregateMeshContextsComponent *xds_context.AggregateMeshContextsComponent
+	meshCache                      *mesh.Cache
+	interCpPool                    *client.Pool
 	*runtimeInfo
 	pgxConfigCustomizationFn config.PgxConfigCustomization
 	tenants                  multitenant.Tenants
@@ -280,6 +282,11 @@ func (b *Builder) WithMeshContextBuilderComponent(meshContextBuilderComponent xd
 	return b
 }
 
+func (b *Builder) WithAggregateMeshContextsComponent(aggregateMeshContextsComponent *xds_context.AggregateMeshContextsComponent) *Builder {
+	b.aggregateMeshContextsComponent = aggregateMeshContextsComponent
+	return b
+}
+
 func (b *Builder) WithMeshCache(meshCache *mesh.Cache) *Builder {
 	b.meshCache = meshCache
 	return b
@@ -381,6 +388,9 @@ func (b *Builder) Build() (Runtime, error) {
 	}
 	if b.meshContextBuilderComponent == nil {
 		return nil, errors.Errorf("MeshContextBuilderComponent has not been configured")
+	}
+	if b.aggregateMeshContextsComponent == nil {
+		return nil, errors.Errorf("AggregateMeshContextsComponent has not been configured")
 	}
 	if b.meshCache == nil {
 		return nil, errors.Errorf("MeshCache has not been configured")
@@ -556,6 +566,10 @@ func (b *Builder) EnvoyAdminClient() admin.EnvoyAdminClient {
 
 func (b *Builder) MeshContextBuilderComponent() xds_context.MeshContextBuilderComponent {
 	return b.meshContextBuilderComponent
+}
+
+func (b *Builder) AggregateMeshContextsComponent() *xds_context.AggregateMeshContextsComponent {
+	return b.aggregateMeshContextsComponent
 }
 
 func (b *Builder) MeshCache() *mesh.Cache {

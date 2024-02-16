@@ -193,6 +193,11 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 		return nil, err
 	}
 
+	err = initializeAggregateMeshContextBuilderComponent(builder)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, plugin := range core_plugins.Plugins().BootstrapPlugins() {
 		if err := plugin.AfterBootstrap(builder, cfg); err != nil {
 			return nil, errors.Wrapf(err, "failed to run afterBootstrap plugin:'%s'", plugin.Name())
@@ -208,6 +213,9 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 	}
 
 	if err := rt.Add(builder.MeshContextBuilderComponent()); err != nil {
+		return nil, err
+	}
+	if err := rt.Add(builder.AggregateMeshContextsComponent()); err != nil {
 		return nil, err
 	}
 
@@ -556,4 +564,19 @@ func initializeMeshContextBuilderComponent(builder *core_runtime.Builder) {
 	)
 
 	builder.WithMeshContextBuilderComponent(meshContextBuilderComponent)
+}
+
+func initializeAggregateMeshContextBuilderComponent(builder *core_runtime.Builder) error {
+	aggregateMeshContextsComponent, err := xds_context.NewAggregateMeshContextsComponent(
+		builder.ReadOnlyResourceManager(),
+		builder.MeshCache().GetMeshContext,
+		10,
+	)
+	if err != nil {
+		return err
+	}
+
+	builder.WithAggregateMeshContextsComponent(aggregateMeshContextsComponent)
+
+	return nil
 }
