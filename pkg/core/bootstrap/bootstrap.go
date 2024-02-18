@@ -193,11 +193,9 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 		return nil, err
 	}
 
-	if cfg.Mode != config_core.Global {
-		err = initializeAggregateMeshContextBuilderComponent(builder)
-		if err != nil {
-			return nil, err
-		}
+	err = initializeAggregateMeshContextBuilderComponent(builder)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, plugin := range core_plugins.Plugins().BootstrapPlugins() {
@@ -217,11 +215,8 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 	if err := rt.Add(builder.MeshContextBuilderComponent()); err != nil {
 		return nil, err
 	}
-
-	if cfg.Mode != config_core.Global {
-		if err := rt.Add(builder.AggregateMeshContextsComponent()); err != nil {
-			return nil, err
-		}
+	if err := rt.Add(builder.AggregateMeshContextsComponent()); err != nil {
+		return nil, err
 	}
 
 	for name, plugin := range core_plugins.Plugins().RuntimePlugins() {
