@@ -13,8 +13,8 @@ import (
 	"github.com/kumahq/kuma/pkg/api-server/authn"
 	api_server "github.com/kumahq/kuma/pkg/api-server/customization"
 	kuma_cp "github.com/kumahq/kuma/pkg/config/app/kuma-cp"
-	"github.com/kumahq/kuma/pkg/core"
 	core_config "github.com/kumahq/kuma/pkg/config/core"
+	"github.com/kumahq/kuma/pkg/core"
 	core_ca "github.com/kumahq/kuma/pkg/core/ca"
 	config_manager "github.com/kumahq/kuma/pkg/core/config/manager"
 	"github.com/kumahq/kuma/pkg/core/datasource"
@@ -390,7 +390,7 @@ func (b *Builder) Build() (Runtime, error) {
 	if b.meshContextBuilderComponent == nil {
 		return nil, errors.Errorf("MeshContextBuilderComponent has not been configured")
 	}
-	if b.cfg.Mode == core_config.Zone {
+	if b.cfg.Mode != core_config.Zone && b.cfg.Mode != core_config.Global { // that is never
 		if b.aggregateMeshContextsComponent == nil {
 			return nil, errors.Errorf("AggregateMeshContextsComponent has not been configured")
 		}
