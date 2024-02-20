@@ -227,10 +227,29 @@ func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 				resChange := event.(events.ResourceChangedEvent)
 				l.Info("Received", "ResourceChangedEvent", resChange)
 				mesh := resChange.Key.Mesh
+
 				if mesh != "" {
 					l.Info("Type has changed for mesh", "type", resChange.Type, "mesh", mesh)
 					m.setTypeChanged(mesh, resChange.Type)
+				} else {
+					desc, err := registry.Global().DescriptorFor(resChange.Type)
+					if err != nil {
+						l.Error(err, "Could not get type")
+						continue
+					}
+
+					if desc.Name == system.ConfigType {
+						mesh, ok := vips.MeshFromConfigKey(resChange.Key.Name)
+						if !ok {
+							continue
+						}
+
+						l.Info("Type has changed for mesh", "type", "Config", "mesh", mesh)
+						m.setTypeChanged(mesh, resChange.Type)
+					}
+
 				}
+
 			}
 		}
 	}
@@ -546,7 +565,7 @@ func (m *meshContextBuilder) fetchResourceListIfChanged(ctx context.Context, lat
 		return latest.ResourceMap[resType], nil
 	}
 
-	return m.fetchResourceList(ctx, resType, mesh, nil)
+	return m.fetchResourceList(ctx, resType, mesh, filterFn)
 }
 
 // fetch all resources of a type with potential filters etc
