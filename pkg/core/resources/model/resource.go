@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -92,12 +93,36 @@ func Hash(resource Resource) []byte {
 	return HashMeta(resource)
 }
 
+const template = "kuma-%s-dns-vips"
+
+var reVip = regexp.MustCompile(fmt.Sprintf(template, `(.*)`))
+
+func meshFromConfigKey(name string) (string, bool) {
+	match := reVip.FindStringSubmatch(name)
+	if len(match) < 2 {
+		return "", false
+	}
+	mesh := match[1]
+	return mesh, true
+}
+
 func HashForMesh(resource Resource, meshName string) []byte {
 	if r, ok := resource.(ResourceHasher); ok {
 		return r.HashForMesh(meshName)
 	}
 
 	meta := resource.GetMeta()
+
+	// Mesh == "" for these guys. We have to scan the resource name
+	// to obtain the mesh name.
+	desc := resource.Descriptor()
+	if desc.Name == "Config" {
+		mesh, ok := meshFromConfigKey(meta.GetName())
+		if ok && mesh == meshName {
+			return HashMeta(resource)
+		}
+	}
+
 	if meta.GetMesh() != meshName {
 		return []byte{}
 	}
