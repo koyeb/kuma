@@ -94,7 +94,6 @@ type meshContextBuilder struct {
 	safeChangedTypesByMesh   *safeChangedTypesByMesh
 	eventBus                 events.EventBus
 	hashCacheBaseMeshContext *cache.Cache
-	latestGlobalContext      *GlobalContext
 }
 
 // MeshContextBuilder
@@ -228,8 +227,10 @@ func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 				resChange := event.(events.ResourceChangedEvent)
 				l.Info("Received", "ResourceChangedEvent", resChange)
 				mesh := resChange.Key.Mesh
-				l.Info("Type has changed for mesh", "type", resChange.Type, "mesh", mesh)
-				m.setTypeChanged(mesh, resChange.Type)
+				if mesh != "" {
+					l.Info("Type has changed for mesh", "type", resChange.Type, "mesh", mesh)
+					m.setTypeChanged(mesh, resChange.Type)
+				}
 			}
 		}
 	}
@@ -382,9 +383,6 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 }
 
 func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, latest *GlobalContext, meshName string) (*GlobalContext, error) {
-	if useReactiveBuildBaseMeshContext() && m.latestGlobalContext != nil {
-		latest = m.latestGlobalContext
-	}
 	rmap := ResourceMap{}
 	// Only pick the global stuff
 	for t := range m.typeSet {
@@ -393,24 +391,21 @@ func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, la
 			return nil, err
 		}
 		if desc.Scope == core_model.ScopeGlobal && desc.Name != system.ConfigType { // For config we ignore them atm and prefer to rely on more specific filters.
-			rmap[t], err = m.fetchGlobalResourceListIfChanged(ctx, latest, t)
+			rmap[t], err = m.fetchResourceList(ctx, t, nil, nil)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to build global context")
 			}
 		}
 	}
 
-	globalContext := &GlobalContext{
-		hash:        rmap.HashForMesh(meshName),
+	newHash := rmap.HashForMesh(meshName)
+	if latest != nil && bytes.Equal(newHash, latest.hash) {
+		return latest, nil
+	}
+	return &GlobalContext{
+		hash:        newHash,
 		ResourceMap: rmap,
-	}
-
-	if useReactiveBuildBaseMeshContext() {
-		m.latestGlobalContext = globalContext
-		m.clearTypeChanged("")
-	}
-
-	return globalContext, nil
+	}, nil
 }
 
 func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context, meshName string, latest *BaseMeshContext) (*BaseMeshContext, error) {
@@ -552,25 +547,6 @@ func (m *meshContextBuilder) fetchResourceListIfChanged(ctx context.Context, lat
 	}
 
 	return m.fetchResourceList(ctx, resType, mesh, nil)
-}
-
-// fetch resource from latest built global base mesh context if it hasn't changed. Else, pull it from the store
-func (m *meshContextBuilder) fetchGlobalResourceListIfChanged(ctx context.Context, latest *GlobalContext, resType core_model.ResourceType) (core_model.ResourceList, error) {
-	if latest == nil {
-		return m.fetchResourceList(ctx, resType, nil, nil)
-	}
-
-	changedTypes := m.safeChangedTypesByMesh.forMesh("")
-	if changedTypes == nil || len(changedTypes) == 0 {
-		return latest.ResourceMap[resType], nil
-	}
-
-	_, hasChanged := changedTypes[resType]
-	if !hasChanged {
-		return latest.ResourceMap[resType], nil
-	}
-
-	return m.fetchResourceList(ctx, resType, nil, nil)
 }
 
 // fetch all resources of a type with potential filters etc
