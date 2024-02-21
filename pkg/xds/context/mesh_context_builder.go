@@ -34,6 +34,8 @@ import (
 
 var logger = core.Log.WithName("xds").WithName("context")
 
+const debugMesh string = "k-199c10ff-85ed-4409-9710-5e6bdb826403"
+
 type safeChangedTypesByMesh struct {
 	sync.Mutex
 	v map[string]map[core_model.ResourceType]struct{}
@@ -270,6 +272,10 @@ func (m *meshContextBuilder) Build(ctx context.Context, meshName string) (MeshCo
 func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string, latestMeshCtx *MeshContext) (*MeshContext, error) {
 	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
 
+	if meshName == debugMesh {
+		l.Info("Running BuildIfChanged", "mesh", meshName)
+	}
+
 	globalContext, err := m.BuildGlobalContextIfChanged(ctx, nil, meshName)
 	if err != nil {
 		return nil, err
@@ -284,6 +290,9 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 			if cached, ok := m.hashCacheBaseMeshContext.Get(meshName); ok {
 				latestBaseMeshContext = cached.(*BaseMeshContext)
 			}
+		}
+		if meshName == debugMesh {
+			l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.hash)
 		}
 
 		baseMeshContext, err = m.BuildBaseMeshContextIfChangedV2(ctx, meshName, latestBaseMeshContext)
@@ -300,6 +309,9 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	// By always setting the mesh context, we refresh the TTL
 	// with the effect that often used contexts remain in the cache while no
 	// longer used contexts are evicted.
+	if meshName == debugMesh {
+		l.Info("Saving base mesh context in hash cache", "mesh", meshName, "hash", baseMeshContext.hash)
+	}
 	m.hashCacheBaseMeshContext.SetDefault(meshName, baseMeshContext)
 
 	var managedTypes []core_model.ResourceType // The types not managed by global nor baseMeshContext
@@ -344,7 +356,13 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 
 	// This base64 encoding seems superfluous but keeping it for backward compatibility
 	newHash := base64.StdEncoding.EncodeToString(m.hash(meshName, globalContext, baseMeshContext, managedTypes, resources))
+	if meshName == debugMesh {
+		l.Info("Computed mesh context hash", "mesh", meshName, "hash", newHash)
+	}
 	if meshName != "default" && latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
+		if meshName == debugMesh {
+			l.Info("Latest mesh context hash is the same as the hash of resources needed to compute the current mesh context. Returning it now", "mesh", meshName, "hash", latestMeshCtx.Hash)
+		}
 		return latestMeshCtx, nil
 	}
 
@@ -439,6 +457,9 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	if changedTypes == nil || len(changedTypes) == 0 {
 		// No occurence of this mesh in changed types. Let's re-use latest base mesh context
 		// l.Info("no resource changed, re-using latest base mesh context to build mesh context", "mesh", meshName)
+		if meshName == debugMesh {
+			l.Info("No changed types for this mesh. Re-using latest base mesh context", "mesh", meshName)
+		}
 		return latest, nil
 	}
 
@@ -450,11 +471,16 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	if !meshChanged && latest != nil {
 		meshList := latest.ResourceMap[core_mesh.MeshType].(*core_mesh.MeshResourceList)
 		mesh = meshList.Items[0]
+		if meshName == debugMesh {
+			l.Info("Found mesh in latest base mesh context's resource map", "mesh", meshName)
+		}
 	} else {
 		if err := m.rm.Get(ctx, mesh, core_store.GetByKey(meshName, core_model.NoMesh)); err != nil {
 			return nil, errors.Wrapf(err, "could not fetch mesh %s", meshName)
 		}
-
+		if meshName == debugMesh {
+			l.Info("Found mesh in the store", "mesh", meshName)
+		}
 	}
 
 	// Add mesh to resource map
@@ -483,6 +509,9 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	}
 
 	// Reset changed types for this mesh
+	if meshName == debugMesh {
+		l.Info("Clear types changed", "mesh", meshName)
+	}
 	m.clearTypeChanged(meshName)
 
 	newHash := rmap.HashForMesh(meshName)
@@ -550,21 +579,35 @@ type filterFn = func(rs core_model.Resource) bool
 
 // fetch resource from latest base mesh context if it hasn't changed. Else, pull it from the store
 func (m *meshContextBuilder) fetchResourceListIfChanged(ctx context.Context, latest *BaseMeshContext, resType core_model.ResourceType, mesh *core_mesh.MeshResource, filterFn filterFn) (core_model.ResourceList, error) {
+	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
+	meshName := mesh.GetMeta().GetName()
+
 	if latest == nil {
+		if meshName == debugMesh {
+			l.Info("Fetching from store", "mesh", meshName, "resourcetype", resType)
+		}
 		return m.fetchResourceList(ctx, resType, mesh, filterFn)
 	}
 
-	meshName := mesh.GetMeta().GetName()
 	changedTypes := m.safeChangedTypesByMesh.forMesh(meshName)
 	if changedTypes == nil || len(changedTypes) == 0 {
+		if meshName == debugMesh {
+			l.Info("Resource not found in changedTypes list. Using version from latest base mesh context", "mesh", meshName, "resourcetype", resType)
+		}
 		return latest.ResourceMap[core_mesh.MeshType], nil
 	}
 
 	_, hasChanged := changedTypes[resType]
 	if !hasChanged {
+		if meshName == debugMesh {
+			l.Info("Resource has not changed since last time. Using version from latest base mesh context", "mesh", meshName, "resourcetype", resType)
+		}
 		return latest.ResourceMap[resType], nil
 	}
 
+	if meshName == debugMesh {
+		l.Info("Fetching from store", "mesh", meshName, "resourcetype", resType)
+	}
 	return m.fetchResourceList(ctx, resType, mesh, filterFn)
 }
 
