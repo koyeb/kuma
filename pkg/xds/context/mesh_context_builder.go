@@ -8,6 +8,7 @@ import (
 	"hash/fnv"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,8 +34,6 @@ import (
 )
 
 var logger = core.Log.WithName("xds").WithName("context")
-
-const debugMesh string = "k-199c10ff-85ed-4409-9710-5e6bdb826403"
 
 type safeChangedTypesByMesh struct {
 	sync.Mutex
@@ -269,10 +268,20 @@ func (m *meshContextBuilder) Build(ctx context.Context, meshName string) (MeshCo
 	return *meshCtx, nil
 }
 
+func (m *meshContextBuilder) shouldLogExcessively(meshName string) bool {
+	for _, mesh := range strings.Split(os.Getenv("DEBUG_MESHES"), ",") {
+		if mesh == meshName {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string, latestMeshCtx *MeshContext) (*MeshContext, error) {
 	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
 
-	if meshName == debugMesh {
+	if m.shouldLogExcessively(meshName) {
 		l.Info("Running BuildIfChanged", "mesh", meshName)
 	}
 
@@ -289,10 +298,10 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 		if m.hashCacheBaseMeshContext != nil {
 			if cached, ok := m.hashCacheBaseMeshContext.Get(meshName); ok {
 				latestBaseMeshContext = cached.(*BaseMeshContext)
+				if m.shouldLogExcessively(meshName) {
+					l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.hash)
+				}
 			}
-		}
-		if meshName == debugMesh {
-			l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.hash)
 		}
 
 		baseMeshContext, err = m.BuildBaseMeshContextIfChangedV2(ctx, meshName, latestBaseMeshContext)
@@ -309,7 +318,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	// By always setting the mesh context, we refresh the TTL
 	// with the effect that often used contexts remain in the cache while no
 	// longer used contexts are evicted.
-	if meshName == debugMesh {
+	if m.shouldLogExcessively(meshName) {
 		l.Info("Saving base mesh context in hash cache", "mesh", meshName, "hash", baseMeshContext.hash)
 	}
 	m.hashCacheBaseMeshContext.SetDefault(meshName, baseMeshContext)
@@ -356,11 +365,11 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 
 	// This base64 encoding seems superfluous but keeping it for backward compatibility
 	newHash := base64.StdEncoding.EncodeToString(m.hash(meshName, globalContext, baseMeshContext, managedTypes, resources))
-	if meshName == debugMesh {
+	if m.shouldLogExcessively(meshName) {
 		l.Info("Computed mesh context hash", "mesh", meshName, "hash", newHash)
 	}
 	if meshName != "default" && latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
-		if meshName == debugMesh {
+		if m.shouldLogExcessively(meshName) {
 			l.Info("Latest mesh context hash is the same as the hash of resources needed to compute the current mesh context. Returning it now", "mesh", meshName, "hash", latestMeshCtx.Hash)
 		}
 		return latestMeshCtx, nil
@@ -457,7 +466,7 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	if changedTypes == nil || len(changedTypes) == 0 {
 		// No occurence of this mesh in changed types. Let's re-use latest base mesh context
 		// l.Info("no resource changed, re-using latest base mesh context to build mesh context", "mesh", meshName)
-		if meshName == debugMesh {
+		if m.shouldLogExcessively(meshName) {
 			l.Info("No changed types for this mesh. Re-using latest base mesh context", "mesh", meshName)
 		}
 		return latest, nil
@@ -471,14 +480,14 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	if !meshChanged && latest != nil {
 		meshList := latest.ResourceMap[core_mesh.MeshType].(*core_mesh.MeshResourceList)
 		mesh = meshList.Items[0]
-		if meshName == debugMesh {
+		if m.shouldLogExcessively(meshName) {
 			l.Info("Found mesh in latest base mesh context's resource map", "mesh", meshName)
 		}
 	} else {
 		if err := m.rm.Get(ctx, mesh, core_store.GetByKey(meshName, core_model.NoMesh)); err != nil {
 			return nil, errors.Wrapf(err, "could not fetch mesh %s", meshName)
 		}
-		if meshName == debugMesh {
+		if m.shouldLogExcessively(meshName) {
 			l.Info("Found mesh in the store", "mesh", meshName)
 		}
 	}
@@ -509,7 +518,7 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	}
 
 	// Reset changed types for this mesh
-	if meshName == debugMesh {
+	if m.shouldLogExcessively(meshName) {
 		l.Info("Clear types changed", "mesh", meshName)
 	}
 	m.clearTypeChanged(meshName)
@@ -583,7 +592,7 @@ func (m *meshContextBuilder) fetchResourceListIfChanged(ctx context.Context, lat
 	meshName := mesh.GetMeta().GetName()
 
 	if latest == nil {
-		if meshName == debugMesh {
+		if m.shouldLogExcessively(meshName) {
 			l.Info("Fetching from store", "mesh", meshName, "resourcetype", resType)
 		}
 		return m.fetchResourceList(ctx, resType, mesh, filterFn)
@@ -591,21 +600,26 @@ func (m *meshContextBuilder) fetchResourceListIfChanged(ctx context.Context, lat
 
 	changedTypes := m.safeChangedTypesByMesh.forMesh(meshName)
 	if changedTypes == nil || len(changedTypes) == 0 {
-		if meshName == debugMesh {
+		if m.shouldLogExcessively(meshName) {
 			l.Info("Resource not found in changedTypes list. Using version from latest base mesh context", "mesh", meshName, "resourcetype", resType)
 		}
 		return latest.ResourceMap[core_mesh.MeshType], nil
-	}
 
-	_, hasChanged := changedTypes[resType]
-	if !hasChanged {
-		if meshName == debugMesh {
+		_, hasChanged := changedTypes[resType]
+		if !hasChanged {
+			if m.shouldLogExcessively(meshName) {
+				l.Info("Resource has not changed since last time. Using version from latest base mesh context", "mesh", meshName, "resourcetype", resType)
+			}
+			return latest.ResourceMap[resType], nil
+		}
+
+		if m.shouldLogExcessively(meshName) {
 			l.Info("Resource has not changed since last time. Using version from latest base mesh context", "mesh", meshName, "resourcetype", resType)
 		}
 		return latest.ResourceMap[resType], nil
 	}
 
-	if meshName == debugMesh {
+	if m.shouldLogExcessively(meshName) {
 		l.Info("Fetching from store", "mesh", meshName, "resourcetype", resType)
 	}
 	return m.fetchResourceList(ctx, resType, mesh, filterFn)
