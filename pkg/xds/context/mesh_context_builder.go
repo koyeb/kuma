@@ -276,7 +276,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	}
 
 	var baseMeshContext *BaseMeshContext
-	if useReactiveBuildBaseMeshContext() {
+	if useReactiveBuildBaseMeshContext() && meshName != "default" {
 
 		// Check hashCache first for an existing mesh latestContext
 		var latestBaseMeshContext *BaseMeshContext
@@ -344,7 +344,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 
 	// This base64 encoding seems superfluous but keeping it for backward compatibility
 	newHash := base64.StdEncoding.EncodeToString(m.hash(meshName, globalContext, baseMeshContext, managedTypes, resources))
-	if latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
+	if meshName != "default" && latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
 		return latestMeshCtx, nil
 	}
 
@@ -418,7 +418,7 @@ func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, la
 	}
 
 	newHash := rmap.HashForMesh(meshName)
-	if latest != nil && bytes.Equal(newHash, latest.hash) {
+	if meshName != "default" && latest != nil && bytes.Equal(newHash, latest.hash) {
 		return latest, nil
 	}
 	return &GlobalContext{
