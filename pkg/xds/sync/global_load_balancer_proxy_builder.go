@@ -93,17 +93,19 @@ func (p *GlobalLoadBalancerProxyBuilder) fetchKoyebApps(ctx context.Context) ([]
 
 	routesByAppId := map[string][]koyeb.ListAllRoutesReplyRoute{}
 
-	// First, grroup routes by AppId
+	// First, group routes by AppId
 	for _, route := range resp.GetRoutes() {
 		routesByAppId[route.GetAppId()] = append(routesByAppId[route.GetAppId()], route)
 	}
 
 	// Build output list
 	koyebApps := []*core_xds.KoyebApp{}
-	for _, routes := range routesByAppId {
-		koyebApp := &core_xds.KoyebApp{}
+	for appID, routes := range routesByAppId {
+		koyebApp := &core_xds.KoyebApp{
+			ID: appID,
+		}
 
-		domains := map[string]struct{}{}
+		uniqueDomains := map[string]struct{}{}
 		for _, route := range routes {
 			dcs := map[string]struct{}{}
 
@@ -111,7 +113,7 @@ func (p *GlobalLoadBalancerProxyBuilder) fetchKoyebApps(ctx context.Context) ([]
 				dcs[dc] = struct{}{}
 			}
 
-			domains[route.GetDomain()] = struct{}{}
+			uniqueDomains[route.GetDomain()] = struct{}{}
 			koyebApp.Services = append(koyebApp.Services, &core_xds.KoyebService{
 				ID:              route.GetServiceId(),
 				DatacenterIDs:   dcs,
@@ -121,9 +123,26 @@ func (p *GlobalLoadBalancerProxyBuilder) fetchKoyebApps(ctx context.Context) ([]
 			})
 		}
 
-		koyebApp.Domains = maps.Keys(domains)
+		// Sort domains to ensure that Envoy conf generated from this will
+		// be consistent
+		domains := maps.Keys(uniqueDomains)
+		sort.Strings(domains)
+		koyebApp.Domains = domains
+
+		// Sort services to ensure that Envoy conf generated from this will
+		// be consistent
+		sort.Slice(koyebApp.Services, func(i, j int) bool {
+			return koyebApp.Services[i].ID > koyebApp.Services[j].ID
+		})
+
 		koyebApps = append(koyebApps, koyebApp)
 	}
+
+	// Sort apps to ensure that Envoy conf generated from this will
+	// be consistent
+	sort.Slice(koyebApps, func(i, j int) bool {
+		return koyebApps[i].ID > koyebApps[j].ID
+	})
 
 	return koyebApps, nil
 }

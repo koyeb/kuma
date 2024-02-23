@@ -229,8 +229,7 @@ type ZoneIngressProxy struct {
 type GlobalLoadBalancerProxy struct {
 	Datacenters []*KoyebDatacenter
 	EndpointMap EndpointMap
-	// KoyebServices []*KoyebService
-	KoyebApps []*KoyebApp
+	KoyebApps   []*KoyebApp
 }
 
 type KoyebDatacenter struct {
@@ -241,6 +240,7 @@ type KoyebDatacenter struct {
 }
 
 type KoyebApp struct {
+	ID       string
 	Domains  []string
 	Services []*KoyebService
 }
@@ -251,7 +251,7 @@ type KoyebService struct {
 	DatacenterIDs   map[string]struct{}
 	Port            uint32
 	DeploymentGroup string
-	Path           string
+	Path            string
 }
 
 type VIPDomains struct {
