@@ -280,6 +280,7 @@ func (m *meshContextBuilder) shouldLogExcessively(meshName string) bool {
 
 func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string, latestMeshCtx *MeshContext) (*MeshContext, error) {
 	l := log.AddFieldsFromCtx(logger, ctx, context.Background())
+	isDefaultMesh := meshName == "default"
 
 	if m.shouldLogExcessively(meshName) {
 		l.Info("Running BuildIfChanged", "mesh", meshName)
@@ -291,7 +292,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	}
 
 	var baseMeshContext *BaseMeshContext
-	if useReactiveBuildBaseMeshContext() && meshName != "default" {
+	if useReactiveBuildBaseMeshContext() && !isDefaultMesh {
 
 		// Check hashCache first for an existing mesh latestContext
 		var latestBaseMeshContext *BaseMeshContext
@@ -359,8 +360,10 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 		}
 	}
 
-	if err := m.decorateWithCrossMeshResources(ctx, resources); err != nil {
-		return nil, errors.Wrap(err, "failed to retrieve cross mesh resources")
+	if isDefaultMesh {
+		if err := m.decorateWithCrossMeshResources(ctx, resources); err != nil {
+			return nil, errors.Wrap(err, "failed to retrieve cross mesh resources")
+		}
 	}
 
 	// This base64 encoding seems superfluous but keeping it for backward compatibility
@@ -368,7 +371,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	if m.shouldLogExcessively(meshName) {
 		l.Info("Computed mesh context hash", "mesh", meshName, "hash", newHash)
 	}
-	if meshName != "default" && latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
+	if !isDefaultMesh && latestMeshCtx != nil && newHash == latestMeshCtx.Hash {
 		if m.shouldLogExcessively(meshName) {
 			l.Info("Latest mesh context hash is the same as the hash of resources needed to compute the current mesh context. Returning it now", "mesh", meshName, "hash", latestMeshCtx.Hash)
 		}
