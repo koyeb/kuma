@@ -118,4 +118,4 @@ interCp:
 # Configuration of experimental features of Kuma
 experimental:
   # If true, KDS will sync using incremental xDS updates
-  kdsDeltaEnabled: false # ENV: KUMA_EXPERIMENTAL_KDS_DELTA_ENABLED
+  kdsDeltaEnabled: true # ENV: KUMA_EXPERIMENTAL_KDS_DELTA_ENABLED
