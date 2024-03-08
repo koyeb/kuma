@@ -95,6 +95,7 @@ type meshContextBuilder struct {
 	safeChangedTypesByMesh   *safeChangedTypesByMesh
 	eventBus                 events.EventBus
 	hashCacheBaseMeshContext *cache.Cache
+	hashCacheGlobalContext   *cache.Cache
 }
 
 // MeshContextBuilder
@@ -120,10 +121,11 @@ type MeshContextBuilder interface {
 	NeedLeaderElection() bool
 }
 
-// cleanupTime is the time after which the mesh context is removed from
+// meshContextCleanupTime is the time after which the mesh context is removed from
 // the longer TTL cache.
 // It exists to ensure contexts of deleted Meshes are eventually cleaned up.
-const cleanupTime = 45 * time.Minute
+const meshContextCleanupTime = 45 * time.Minute
+const globalContextCleanupTime = 2 * time.Minute
 
 type MeshContextBuilderComponent interface {
 	MeshContextBuilder
@@ -159,7 +161,8 @@ func NewMeshContextBuilderComponent(
 			v: map[string]map[core_model.ResourceType]struct{}{},
 		},
 		eventBus:                 eventBus,
-		hashCacheBaseMeshContext: cache.New(cleanupTime, time.Duration(int64(float64(cleanupTime)*0.9))),
+		hashCacheBaseMeshContext: cache.New(meshContextCleanupTime, time.Duration(int64(float64(meshContextCleanupTime)*0.9))),
+		hashCacheGlobalContext:   cache.New(globalContextCleanupTime, time.Duration(int64(float64(globalContextCleanupTime)*0.9))),
 	}
 }
 
@@ -189,6 +192,7 @@ func NewMeshContextBuilder(
 		rsGraphBuilder:           rsGraphBuilder,
 		safeChangedTypesByMesh:   nil,
 		hashCacheBaseMeshContext: nil,
+		hashCacheGlobalContext:   nil,
 	}
 }
 
@@ -286,10 +290,16 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 		l.Info("Running BuildIfChanged", "mesh", meshName)
 	}
 
-	globalContext, err := m.BuildGlobalContextIfChanged(ctx, nil, meshName)
+	var latestGlobalContext *GlobalContext
+	cachedGlobalContext, ok := m.hashCacheGlobalContext.Get("")
+	if ok {
+		latestGlobalContext = cachedGlobalContext.(*GlobalContext)
+	}
+	globalContext, err := m.BuildGlobalContextIfChanged(ctx, latestGlobalContext, meshName)
 	if err != nil {
 		return nil, err
 	}
+	m.hashCacheGlobalContext.SetDefault("", globalContext)
 
 	var baseMeshContext *BaseMeshContext
 	if useReactiveBuildBaseMeshContext() && !isDefaultMesh {
