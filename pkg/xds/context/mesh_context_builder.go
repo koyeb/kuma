@@ -331,7 +331,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 
 	var latestGlobalContext *GlobalContext
 	cachedGlobalContext, ok := m.hashCacheGlobalContext.Get("")
-	if ok {
+	if ok && !isDefaultMesh {
 		latestGlobalContext = cachedGlobalContext.(*GlobalContext)
 	}
 	globalContext, err := m.BuildGlobalContextIfChanged(ctx, latestGlobalContext, meshName)
