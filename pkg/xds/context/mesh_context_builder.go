@@ -35,6 +35,38 @@ import (
 
 var logger = core.Log.WithName("xds").WithName("context")
 
+type safeChangedTypes struct {
+	sync.Mutex
+	types map[core_model.ResourceType]struct{}
+}
+
+func (s *safeChangedTypes) markTypeChanged(t core_model.ResourceType) {
+	if s == nil {
+		return
+	}
+
+	s.Lock()
+	defer s.Unlock()
+
+	s.types[t] = struct{}{}
+}
+
+func (s *safeChangedTypes) hasChanged(t core_model.ResourceType) bool {
+	if s == nil {
+		return true
+	}
+
+	s.Lock()
+	defer s.Unlock()
+
+	_, ok := s.types[t]
+	return !ok
+}
+
+func (s *safeChangedTypes) unsafeClear(t core_model.ResourceType) {
+	delete(s.types, t)
+}
+
 type safeChangedTypesByMesh struct {
 	sync.Mutex
 	v map[string]map[core_model.ResourceType]struct{}
@@ -92,6 +124,7 @@ type meshContextBuilder struct {
 	topLevelDomain           string
 	vipPort                  uint32
 	rsGraphBuilder           ReachableServicesGraphBuilder
+	globalChangedTypes       *safeChangedTypes
 	safeChangedTypesByMesh   *safeChangedTypesByMesh
 	eventBus                 events.EventBus
 	hashCacheBaseMeshContext *cache.Cache
@@ -159,6 +192,9 @@ func NewMeshContextBuilderComponent(
 		rsGraphBuilder:  rsGraphBuilder,
 		safeChangedTypesByMesh: &safeChangedTypesByMesh{
 			v: map[string]map[core_model.ResourceType]struct{}{},
+		},
+		globalChangedTypes: &safeChangedTypes{
+			types: map[core_model.ResourceType]struct{}{},
 		},
 		eventBus:                 eventBus,
 		hashCacheBaseMeshContext: cache.New(meshContextCleanupTime, time.Duration(int64(float64(meshContextCleanupTime)*0.9))),
@@ -228,6 +264,7 @@ func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 			return nil
 
 		case event := <-listener.Recv():
+
 			if useReactiveBuildBaseMeshContext() {
 				resChange := event.(events.ResourceChangedEvent)
 				l.Info("Received", "ResourceChangedEvent", resChange)
@@ -242,7 +279,6 @@ func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 						l.Error(err, "Could not get type")
 						continue
 					}
-
 					if desc.Name == system.ConfigType {
 						mesh, ok := vips.MeshFromConfigKey(resChange.Key.Name)
 						if !ok {
@@ -251,6 +287,9 @@ func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 
 						l.Info("Type has changed for mesh", "type", "Config", "mesh", mesh)
 						m.setTypeChanged(mesh, resChange.Type)
+						// well should alwys be true because we're in a branch where mesh == ""?
+					} else if desc.Scope == core_model.ScopeGlobal {
+						m.globalChangedTypes.markTypeChanged(resChange.Type)
 					}
 
 				}
@@ -443,17 +482,35 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 
 func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, latest *GlobalContext, meshName string) (*GlobalContext, error) {
 	rmap := ResourceMap{}
-	// Only pick the global stuff
 	for t := range m.typeSet {
 		desc, err := registry.Global().DescriptorFor(t)
 		if err != nil {
 			return nil, err
 		}
-		if desc.Scope == core_model.ScopeGlobal && desc.Name != system.ConfigType { // For config we ignore them atm and prefer to rely on more specific filters.
+
+		// Only pick the global stuff
+		if desc.Scope != core_model.ScopeGlobal {
+			continue
+		}
+
+		// For config we ignore them atm and prefer to rely on more specific filters.
+		if desc.Name == system.ConfigType {
+			continue
+		}
+
+		// If no change has been registered for this type, pick the resource from the latest global context,
+		// else fetch it from store
+		if !m.globalChangedTypes.hasChanged(t) && latest != nil {
+			rmap[t] = latest.ResourceMap[t]
+		} else {
+			m.globalChangedTypes.Lock()
 			rmap[t], err = m.fetchResourceList(ctx, t, nil, nil)
 			if err != nil {
+				m.globalChangedTypes.Unlock()
 				return nil, errors.Wrap(err, "failed to build global context")
 			}
+			m.globalChangedTypes.unsafeClear(t)
+			m.globalChangedTypes.Unlock()
 		}
 	}
 
