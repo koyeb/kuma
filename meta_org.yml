@@ -33,6 +33,9 @@ default:
       name: kind/cleanup
       description: "Cleanup/refactor an existing component/code"
     - color: c7def8
+      name: kind/ci-flake
+      description: "Used to track flakes in CI"
+    - color: c7def8
       name: kind/support
       description: "Support issue"
     - color: c7def8
@@ -47,6 +50,9 @@ default:
     - color: c7def8
       name: kind/improvement
       description: "Improvement on an existing feature"
+    - color: c7def8
+      name: kind/service-review
+      description: "Service review issue"
     - color: e11d21
       name: breaking-change
     - color: 7057ff
@@ -93,3 +99,17 @@ default:
       description: "2.5.x release"
     - title: 2.6.x
       description: "2.6.x release"
+    - title: 2.7.x
+      description: "2.7.x release"
+    - title: 2.8.x
+      description: "2.8.x release"
+    - title: 2.9.x
+      description: "2.9.x release"
+    - title: 2.10.x
+      description: "2.10.x release"
+    - title: 2.11.x
+      description: "2.11.x release"
+    - title: 2.12.x
+      description: "2.12.x release"
+    - title: 3.0.x
+      description: "3.0.x release"
