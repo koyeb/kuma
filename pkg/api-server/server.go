@@ -143,6 +143,7 @@ func NewApiServer(
 	addResourcesEndpoints(ws, defs, resManager, cfg, access.ResourceAccess, globalInsightService, meshContextBuilder)
 	addPoliciesWsEndpoints(ws, cfg.IsFederatedZoneCP(), cfg.ApiServer.ReadOnly, defs)
 	addInspectEndpoints(ws, cfg, meshContextBuilder, resManager)
+	addIsPropagatedEndpoint(ws, cfg)
 	addInspectEnvoyAdminEndpoints(ws, cfg, resManager, access.EnvoyAdminAccess, envoyAdminClient)
 	addZoneEndpoints(ws, resManager)
 	guiUrl := cfg.ApiServer.GUI.BasePath

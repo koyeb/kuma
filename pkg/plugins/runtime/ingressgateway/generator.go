@@ -3,18 +3,24 @@ package ingressgateway
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	envoy_service_runtime_v3 "github.com/envoyproxy/go-control-plane/envoy/service/runtime/v3"
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	core_mesh "github.com/kumahq/kuma/pkg/core/resources/apis/mesh"
 	core_xds "github.com/kumahq/kuma/pkg/core/xds"
+	"github.com/kumahq/kuma/pkg/koyeb"
 	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/metadata"
+	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/route"
+	"github.com/kumahq/kuma/pkg/plugins/runtime/ingressgateway/routes"
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 	xds_context "github.com/kumahq/kuma/pkg/xds/context"
+	envoy_common "github.com/kumahq/kuma/pkg/xds/envoy"
 	envoy_listeners "github.com/kumahq/kuma/pkg/xds/envoy/listeners"
 	envoy_names "github.com/kumahq/kuma/pkg/xds/envoy/names"
 	envoy_routes "github.com/kumahq/kuma/pkg/xds/envoy/routes"
+	envoy_virtual_hosts "github.com/kumahq/kuma/pkg/xds/envoy/virtualhosts"
 	xds_topology "github.com/kumahq/kuma/pkg/xds/topology"
 	"github.com/pkg/errors"
 )
@@ -150,7 +156,17 @@ func (g Generator) Generate(
 
 	var limits []RuntimeResoureLimitListener
 
-	for _, info := range ExtractGatewayListeners(proxy) {
+	gatewayListerners := ExtractGatewayListeners(proxy)
+
+	if len(gatewayListerners) > 0 {
+		runtimeInfoResources, err := g.generateRuntimeInfoResources(gatewayListerners[0])
+		if err != nil {
+			return nil, err
+		}
+		resources.AddSet(runtimeInfoResources)
+	}
+
+	for _, info := range gatewayListerners {
 		cdsResources, err := g.generateCDS(ctx, xdsCtx, proxy)
 		if err != nil {
 			return nil, err
@@ -195,6 +211,76 @@ func (g Generator) generateRTDS(limits []RuntimeResoureLimitListener) *core_xds.
 	}
 
 	return res
+}
+
+func (g Generator) generateRuntimeInfoResources(originalGatewayListenerInfo GatewayListenerInfo) (*core_xds.ResourceSet, error) {
+	resources := core_xds.NewResourceSet()
+
+	info := GatewayListenerInfo{
+		Proxy:   originalGatewayListenerInfo.Proxy,
+		Gateway: originalGatewayListenerInfo.Gateway,
+		Listener: GatewayListener{
+			Port:         uint32(koyeb.RuntimeInfoPort),
+			Protocol:     mesh_proto.MeshGateway_Listener_HTTP,
+			ResourceName: "koyeb_runtime_info",
+		},
+	}
+
+	runtimeInfoPayload, err := koyeb.GenerateRuntimeInfoPayloadJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	vh := envoy_virtual_hosts.NewVirtualHostBuilder(info.Proxy.APIVersion, "wildcard").Configure(
+		envoy_virtual_hosts.DomainNames("*"),
+	)
+
+	routeConfig := envoy_routes.NewRouteConfigurationBuilder(info.Proxy.APIVersion, info.Listener.ResourceName).
+		Configure(
+			//NOTE(nicoche): we have to expand this. The default is 4096 bytes. However, we embed
+			// a full HTML page that we send over as a direct response in some cases.
+			routes.CommonRouteConfiguration(uint32(32768)),
+			envoy_routes.IgnorePortInHostMatching(),
+			// TODO(jpeach) propagate merged listener tags.
+			// Ideally we would propagate the tags header
+			// to mesh services but not to external services,
+			// but in the route configuration, we don't know
+			// yet where the request will route to.
+			// envoy_routes.TagsHeader(...),
+			envoy_routes.ResetTagsHeader()).
+		Configure(envoy_routes.VirtualHost(vh))
+
+	routeBuilder := &route.RouteBuilder{}
+	routeBuilder.Configure(route.RouteMatchPrefixPath(koyeb.RuntimeInfoPath))
+	routeBuilder.Configure(route.RouteActionDirectResponse(http.StatusOK, runtimeInfoPayload))
+	vh.Configure(route.VirtualHostRoute(routeBuilder))
+
+	res, err := BuildResourceSet(routeConfig)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to build route config resource")
+	}
+
+	resources.AddSet(res)
+
+	service := info.Proxy.Dataplane.Spec.GetIdentifyingService()
+	filterChainBuilder := envoy_listeners.NewFilterChainBuilder(info.Proxy.APIVersion, envoy_common.AnonymousResource).Configure(
+		envoy_listeners.HttpConnectionManager(service, false),
+		envoy_listeners.ServerHeader("Koyeb Ingress Gateway"),
+		envoy_listeners.HttpDynamicRoute(info.Listener.ResourceName),
+		envoy_listeners.EnablePathNormalization(),
+	)
+
+	listenerBuilder, _ := GenerateListener(info)
+	listenerBuilder.Configure(envoy_listeners.FilterChain(filterChainBuilder))
+
+	res, err = BuildResourceSet(listenerBuilder)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to build listener resource")
+	}
+
+	resources.AddSet(res)
+
+	return resources, nil
 }
 
 func (g Generator) generateLDS(xdsCtx xds_context.Context, info GatewayListenerInfo) (*core_xds.ResourceSet, *RuntimeResoureLimitListener, error) {
