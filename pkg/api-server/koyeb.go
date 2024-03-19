@@ -112,28 +112,38 @@ func (p *Prober) Do(ctx context.Context) (*KoyebRuntime, error) {
 		return nil, errors.New("no igw to contact")
 	}
 
+	// Note that we don't error if we fail to connect to a specific IGW.
+	// This is because we could put a server in maintenance and thus no IGW
+	// could run there, even though the server is mentioned by the DNS record
+	// we use to list all IGW servers.
 	for _, ip := range p.igwIps {
 		url := fmt.Sprintf("http://%s:%d%s", ip, koyebpkg.RuntimeInfoPort, koyebpkg.RuntimeInfoPath)
 		resp, err := http.Get(url)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not probe ingress gateway at url %s", url)
+			log.Error(err, fmt.Sprintf("Could not contact ingress gateway at url %s", url))
+			continue
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
 		defer resp.Body.Close()
 		if err != nil {
-			return nil, errors.Wrap(err, "could not read body")
+			log.Error(err, fmt.Sprintf("Could not read body of response from ingress gateway at url %s", url))
+			continue
 		}
 
 		ipRuntimeInfo := koyebpkg.RuntimeInfo{}
 		err = json.Unmarshal([]byte(body), &ipRuntimeInfo)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not unmarshal igw runtime response")
+			return nil, errors.Wrapf(err, "could not unmarshal response from ingress gateway at url %s", url)
 		}
 
 		out.IngressGateways[ip] = &IngressGatewayRuntime{
 			GeneratedAt: ipRuntimeInfo.GeneratedAt,
 		}
+	}
+
+	if len(out.IngressGateways) == 0 {
+		return nil, errors.New("could not contact any igw")
 	}
 
 	p.cachedResponse = out
