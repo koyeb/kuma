@@ -75,7 +75,7 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 			clusterName := fmt.Sprintf("%s_%s", service, "prod")
 
 			// CDS
-			r, err := generateEdsCluster(proxy, clusterName, service, dest, xdsCtx.Mesh.Resource, targetMesh)
+			r, err := generateEdsCluster(proxy, clusterName, service, dest, xdsCtx.Mesh.Resource, targetMesh, mr.EndpointMap[service])
 			if err != nil {
 				return nil, err
 			}
@@ -93,6 +93,33 @@ func (c *ClusterGenerator) GenerateClusters(ctx context.Context, xdsCtx xds_cont
 	return resources, nil
 }
 
+func getLbSplitTags(destinationTags []envoy_tags.Tags, endpoints []core_xds.Endpoint) envoy_tags.TagKeysSlice {
+	out := envoy_tags.TagKeysSlice{}
+	for _, destination := range destinationTags {
+		relevantTags := envoy_tags.Tags{}
+		for key, value := range destination {
+			matchedTargets := map[string]struct{}{}
+			allTargets := map[string]struct{}{}
+			for _, endpoint := range endpoints {
+				address := endpoint.Address()
+				if endpoint.Tags[key] == value || value == mesh_proto.MatchAllTag {
+					matchedTargets[address] = struct{}{}
+				}
+				allTargets[address] = struct{}{}
+			}
+			if len(matchedTargets) < len(allTargets) {
+				relevantTags[key] = value
+			}
+		}
+
+		if len(relevantTags) > 0 {
+			out = append(out, relevantTags.Keys())
+		}
+	}
+
+	return out
+}
+
 func generateEdsCluster(
 	proxy *core_xds.Proxy,
 	clusterName string,
@@ -100,15 +127,14 @@ func generateEdsCluster(
 	dest map[string][]envoy_tags.Tags,
 	sourceMesh *core_mesh.MeshResource,
 	targetMesh *core_mesh.MeshResource,
+	endpoints []core_xds.Endpoint,
 ) (*core_xds.Resource, error) {
 	tagSlice := envoy_tags.TagsSlice(append(dest[service], dest[mesh_proto.MatchAllTag]...))
-	tagKeySlice := tagSlice.ToTagKeysSlice().Transform(
-		envoy_tags.Without(mesh_proto.ServiceTag),
-	)
+	lbSplitTagsKeys := getLbSplitTags(dest[service], endpoints)
 
 	clusterBuilder := clusters.NewClusterBuilder(proxy.APIVersion, clusterName).Configure(
 		clusters.EdsCluster(),
-		clusters.LbSubset(tagKeySlice),
+		clusters.LbSubset(lbSplitTagsKeys),
 		clusters.CrossMeshClientSideMTLS(proxy.SecretsTracker, sourceMesh, targetMesh, service, true, tagSlice),
 		clusters.ConnectionBufferLimit(DefaultConnectionBuffer),
 		clusters.HttpDownstreamProtocolOptions(),

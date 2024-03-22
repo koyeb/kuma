@@ -17,7 +17,6 @@ networking:
         koyeb.com/port: "8001"
         koyeb.com/service-name: dp-8001
         deploy: "active"
-        koyeb.com/global-deployment: "active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http
         koyeb.com/mesh: abc
@@ -31,7 +30,7 @@ networking:
         koyeb.com/region: par
         koyeb.com/port: "8002"
         koyeb.com/service-name: dp-8002
-        koyeb.com/global-deployment: "active"
+        deploy: "active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http2
     - port: 9934
@@ -44,7 +43,7 @@ networking:
         koyeb.com/region: par
         koyeb.com/port: "8004"
         koyeb.com/service-name: dp-8004
-        koyeb.com/global-deployment: "active"
+        deploy: "active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http2
     - port: 9936
@@ -57,7 +56,7 @@ networking:
         koyeb.com/region: par
         koyeb.com/port: "8006"
         koyeb.com/service-name: dp-8006
-        koyeb.com/global-deployment: "active"
+        deploy: "active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: tcp
     - port: 9941
@@ -70,7 +69,7 @@ networking:
         koyeb.com/region: par
         koyeb.com/port: "8011"
         koyeb.com/service-name: dp-8011
-        koyeb.com/global-deployment: "active"
+        deploy: "active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http
     - port: 9942
@@ -83,8 +82,8 @@ networking:
         kuma.io/service: dp-8001
         koyeb.com/app-name: mec
         koyeb.com/region: par
-        koyeb.com/port: "8012"
+        koyeb.com/port: "8001"
         koyeb.com/service-name: dp-8001
-        koyeb.com/global-deployment: "not-active"
+        deploy: "not-active"
         koyeb.com/deploymentgroup: "prod"
         kuma.io/protocol: http

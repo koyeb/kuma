@@ -9,5 +9,8 @@ destinations:
       kuma.io/service: 'dp-8001'
 conf:
   destination:
+    deploy: 'active'
+    koyeb.com/app-name: mec
+    koyeb.com/port: "8001"
+    koyeb.com/service-name: dp-8001
     kuma.io/service: 'dp-8001'
-    koyeb.com/global-deployment: 'active'
