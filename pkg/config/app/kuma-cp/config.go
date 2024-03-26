@@ -169,6 +169,8 @@ type Config struct {
 	EventBus eventbus.Config `json:"eventBus"`
 	// Koyeb API URL
 	KoyebApiUrl string `json:"koyebApiUrl" envconfig:"koyeb_api_url"`
+	// Redis to cache stuff like mesh contexts
+	KoyebRedisUrl string `json:"koyebRedisUrl" envconfig:"koyeb_redis_url"`
 }
 
 func (c Config) IsFederatedZoneCP() bool {
@@ -270,6 +272,7 @@ var DefaultConfig = func() Config {
 		InterCp:  intercp.DefaultInterCpConfig(),
 		EventBus: eventbus.Default(),
 		KoyebApiUrl: "",
+		KoyebRedisUrl: "",
 	}
 }
 

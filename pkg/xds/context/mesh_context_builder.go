@@ -173,18 +173,19 @@ func NewMeshContextBuilderComponent(
 	vipPort uint32,
 	rsGraphBuilder ReachableServicesGraphBuilder,
 	eventBus events.EventBus,
+	redisUrl string,
 ) MeshContextBuilderComponent {
 	typeSet := map[core_model.ResourceType]struct{}{}
 	for _, typ := range types {
 		typeSet[typ] = struct{}{}
 	}
 
-	meshCtxCache, err := NewRedisCache("127.0.0.1:6379", meshContextCleanupTime)
+	meshCtxCache, err := NewRedisCache(redisUrl, meshContextCleanupTime)
 	if err != nil {
 		logger.Error(err, "no redis cache setup for base mesh contexts")
 	}
 
-	globalCtxCache, err := NewRedisCache("127.0.0.1:6379", globalContextCleanupTime)
+	globalCtxCache, err := NewRedisCache(redisUrl, globalContextCleanupTime)
 	if err != nil {
 		logger.Error(err, "no redis cache setup for global contexts")
 	}

@@ -188,7 +188,7 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 
 	initializeTokenIssuers(builder)
 
-	initializeMeshContextBuilderComponent(builder)
+	initializeMeshContextBuilderComponent(builder, cfg.KoyebRedisUrl)
 	if err := initializeMeshCache(builder); err != nil {
 		return nil, err
 	}
@@ -550,7 +550,7 @@ func initializeTokenIssuers(builder *core_runtime.Builder) {
 	builder.WithTokenIssuers(issuers)
 }
 
-func initializeMeshContextBuilderComponent(builder *core_runtime.Builder) {
+func initializeMeshContextBuilderComponent(builder *core_runtime.Builder, redisUrl string) {
 	rsGraphBuilder := xds_context.AnyToAnyReachableServicesGraphBuilder
 	if builder.Config().Experimental.AutoReachableServices {
 		rsGraphBuilder = graph.Builder
@@ -566,6 +566,7 @@ func initializeMeshContextBuilderComponent(builder *core_runtime.Builder) {
 		builder.Config().DNSServer.ServiceVipPort,
 		rsGraphBuilder,
 		builder.EventBus(),
+		redisUrl,
 	)
 
 	builder.WithMeshContextBuilderComponent(meshContextBuilderComponent)

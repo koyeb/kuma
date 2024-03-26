@@ -119,3 +119,4 @@ interCp:
 experimental:
   # If true, KDS will sync using incremental xDS updates
   kdsDeltaEnabled: true # ENV: KUMA_EXPERIMENTAL_KDS_DELTA_ENABLED
+koyebRedisUrl: "127.0.0.1:6379"
