@@ -2,6 +2,7 @@ package system
 
 import (
 	"errors"
+	"encoding/gob"
 
 	system_proto "github.com/kumahq/kuma/api/system/v1alpha1"
 	"github.com/kumahq/kuma/pkg/core/resources/model"
@@ -111,4 +112,5 @@ func init() {
 		KumactlListArg: "global-secrets",
 	}
 	registry.RegisterType(GlobalSecretResourceTypeDescriptor)
+	gob.Register(&GlobalSecretResourceList{})
 }

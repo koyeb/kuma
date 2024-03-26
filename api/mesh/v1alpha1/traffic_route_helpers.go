@@ -4,9 +4,14 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"encoding/gob"
 
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 )
+
+func init() {
+	gob.Register(&TrafficRoute_LoadBalancer_RoundRobin_{})
+}
 
 // GetSplitWithDestination returns unified list of split regardless if split or destination is used
 // Destination is a syntax sugar over single split with weight of 1.

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"time"
+	"encoding/gob"
 
 	core_model "github.com/kumahq/kuma/pkg/core/resources/model"
 )
@@ -12,6 +13,10 @@ type resourceMetaObject struct {
 	Mesh             string
 	CreationTime     time.Time
 	ModificationTime time.Time
+}
+
+func init() {
+	gob.Register(&resourceMetaObject{})
 }
 
 var _ core_model.ResourceMeta = &resourceMetaObject{}

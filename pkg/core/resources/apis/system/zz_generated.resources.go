@@ -6,6 +6,7 @@ package system
 
 import (
 	"errors"
+	"encoding/gob"
 	"fmt"
 
 	system_proto "github.com/kumahq/kuma/api/system/v1alpha1"
@@ -120,6 +121,7 @@ var ConfigResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ConfigResourceTypeDescriptor)
+	gob.Register(&ConfigResourceList{})
 }
 
 const (
@@ -229,6 +231,7 @@ var SecretResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(SecretResourceTypeDescriptor)
+	gob.Register(&SecretResourceList{})
 }
 
 const (
@@ -339,6 +342,7 @@ var ZoneResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ZoneResourceTypeDescriptor)
+	gob.Register(&ZoneResourceList{})
 }
 
 const (
@@ -447,6 +451,7 @@ var ZoneInsightResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ZoneInsightResourceTypeDescriptor)
+	gob.Register(&ZoneInsightResourceList{})
 }
 
 const (

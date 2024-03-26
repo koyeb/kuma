@@ -989,6 +989,7 @@ type Dataplane_Networking_Inbound_ServiceProbe_Tcp struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+	Placeholder   bool
 }
 
 func (x *Dataplane_Networking_Inbound_ServiceProbe_Tcp) Reset() {

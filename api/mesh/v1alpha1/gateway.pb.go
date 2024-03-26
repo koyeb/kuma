@@ -429,6 +429,7 @@ type MeshGateway_TLS_Options struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+	Placeholder   bool
 }
 
 func (x *MeshGateway_TLS_Options) Reset() {

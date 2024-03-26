@@ -6,6 +6,7 @@ package mesh
 
 import (
 	"errors"
+	"encoding/gob"
 	"fmt"
 
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
@@ -128,6 +129,7 @@ var CircuitBreakerResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(CircuitBreakerResourceTypeDescriptor)
+	gob.Register(&CircuitBreakerResourceList{})
 }
 
 const (
@@ -239,6 +241,7 @@ var DataplaneResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(DataplaneResourceTypeDescriptor)
+	gob.Register(&DataplaneResourceList{})
 }
 
 const (
@@ -348,6 +351,7 @@ var DataplaneInsightResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(DataplaneInsightResourceTypeDescriptor)
+	gob.Register(&DataplaneInsightResourceList{})
 }
 
 const (
@@ -576,6 +580,7 @@ var ExternalServiceResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ExternalServiceResourceTypeDescriptor)
+	gob.Register(&ExternalServiceResourceList{})
 }
 
 const (
@@ -693,6 +698,7 @@ var FaultInjectionResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(FaultInjectionResourceTypeDescriptor)
+	gob.Register(&FaultInjectionResourceList{})
 }
 
 const (
@@ -810,6 +816,7 @@ var HealthCheckResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(HealthCheckResourceTypeDescriptor)
+	gob.Register(&HealthCheckResourceList{})
 }
 
 const (
@@ -919,6 +926,7 @@ var MeshResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(MeshResourceTypeDescriptor)
+	gob.Register(&MeshResourceList{})
 }
 
 const (
@@ -1032,6 +1040,7 @@ var MeshGatewayResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(MeshGatewayResourceTypeDescriptor)
+	gob.Register(&MeshGatewayResourceList{})
 }
 
 const (
@@ -1145,6 +1154,7 @@ var MeshGatewayRouteResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(MeshGatewayRouteResourceTypeDescriptor)
+	gob.Register(&MeshGatewayRouteResourceList{})
 }
 
 const (
@@ -1253,6 +1263,7 @@ var MeshInsightResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(MeshInsightResourceTypeDescriptor)
+	gob.Register(&MeshInsightResourceList{})
 }
 
 const (
@@ -1366,6 +1377,7 @@ var ProxyTemplateResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ProxyTemplateResourceTypeDescriptor)
+	gob.Register(&ProxyTemplateResourceList{})
 }
 
 const (
@@ -1483,6 +1495,7 @@ var RateLimitResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(RateLimitResourceTypeDescriptor)
+	gob.Register(&RateLimitResourceList{})
 }
 
 const (
@@ -1600,6 +1613,7 @@ var RetryResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(RetryResourceTypeDescriptor)
+	gob.Register(&RetryResourceList{})
 }
 
 const (
@@ -1709,6 +1723,7 @@ var ServiceInsightResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ServiceInsightResourceTypeDescriptor)
+	gob.Register(&ServiceInsightResourceList{})
 }
 
 const (
@@ -1930,6 +1945,7 @@ var TimeoutResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(TimeoutResourceTypeDescriptor)
+	gob.Register(&TimeoutResourceList{})
 }
 
 const (
@@ -2047,6 +2063,7 @@ var TrafficLogResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(TrafficLogResourceTypeDescriptor)
+	gob.Register(&TrafficLogResourceList{})
 }
 
 const (
@@ -2164,6 +2181,7 @@ var TrafficPermissionResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(TrafficPermissionResourceTypeDescriptor)
+	gob.Register(&TrafficPermissionResourceList{})
 }
 
 const (
@@ -2281,6 +2299,7 @@ var TrafficRouteResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(TrafficRouteResourceTypeDescriptor)
+	gob.Register(&TrafficRouteResourceList{})
 }
 
 const (
@@ -2394,6 +2413,7 @@ var TrafficTraceResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(TrafficTraceResourceTypeDescriptor)
+	gob.Register(&TrafficTraceResourceList{})
 }
 
 const (
@@ -2507,6 +2527,7 @@ var VirtualOutboundResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(VirtualOutboundResourceTypeDescriptor)
+	gob.Register(&VirtualOutboundResourceList{})
 }
 
 const (
@@ -2618,6 +2639,7 @@ var ZoneEgressResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ZoneEgressResourceTypeDescriptor)
+	gob.Register(&ZoneEgressResourceList{})
 }
 
 const (
@@ -2727,6 +2749,7 @@ var ZoneEgressInsightResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ZoneEgressInsightResourceTypeDescriptor)
+	gob.Register(&ZoneEgressInsightResourceList{})
 }
 
 const (
@@ -2957,6 +2980,7 @@ var ZoneIngressResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ZoneIngressResourceTypeDescriptor)
+	gob.Register(&ZoneIngressResourceList{})
 }
 
 const (
@@ -3066,6 +3090,7 @@ var ZoneIngressInsightResourceTypeDescriptor = model.ResourceTypeDescriptor{
 
 func init() {
 	registry.RegisterType(ZoneIngressInsightResourceTypeDescriptor)
+	gob.Register(&ZoneIngressInsightResourceList{})
 }
 
 const (
