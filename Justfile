@@ -32,6 +32,7 @@ default:
 
 run-db:
   -docker run -p 5532:5432 --rm --name kuma-db -e POSTGRES_USER=kuma -e POSTGRES_PASSWORD=kuma -e POSTGRES_DB=kuma -d postgres:14
+  docker run -p 6379:6379 --rm --name kuma-cache -d redis:latest
   sleep 5
   docker run --rm --link kuma-db:kuma-db -e PGHOST=kuma-db -e PGUSER=kuma -e PGPASSWORD=kuma postgres:14 /bin/bash -c "echo 'CREATE DATABASE \"cp-global\" ENCODING UTF8;' | psql"
   docker run --rm --link kuma-db:kuma-db -e PGHOST=kuma-db -e PGUSER=kuma -e PGPASSWORD=kuma postgres:14 /bin/bash -c "echo 'CREATE DATABASE \"cp-par1\" ENCODING UTF8;' | psql"

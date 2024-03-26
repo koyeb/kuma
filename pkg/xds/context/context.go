@@ -2,7 +2,9 @@ package context
 
 import (
 	"encoding/base64"
+	"encoding/gob"
 
+	"google.golang.org/protobuf/types/known/structpb"
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	"github.com/kumahq/kuma/pkg/core"
 	"github.com/kumahq/kuma/pkg/core/datasource"
@@ -11,6 +13,15 @@ import (
 	"github.com/kumahq/kuma/pkg/xds/envoy"
 	"github.com/kumahq/kuma/pkg/xds/secrets"
 )
+
+func init() {
+	gob.Register(&structpb.Value_StructValue{})
+	gob.Register(&structpb.Value_StringValue{})
+	gob.Register(&structpb.Value_NumberValue{})
+	gob.Register(&structpb.Value_NullValue{})
+	gob.Register(&structpb.Value_ListValue{})
+	gob.Register(&structpb.Value_BoolValue{})
+}
 
 type Context struct {
 	ControlPlane *ControlPlaneContext

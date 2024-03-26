@@ -12,9 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/patrickmn/go-cache"
-	"github.com/pkg/errors"
-
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	"github.com/kumahq/kuma/pkg/core"
 	"github.com/kumahq/kuma/pkg/core/datasource"
@@ -31,6 +28,7 @@ import (
 	"github.com/kumahq/kuma/pkg/events"
 	"github.com/kumahq/kuma/pkg/log"
 	xds_topology "github.com/kumahq/kuma/pkg/xds/topology"
+	"github.com/pkg/errors"
 )
 
 var logger = core.Log.WithName("xds").WithName("context")
@@ -127,8 +125,8 @@ type meshContextBuilder struct {
 	globalChangedTypes       *safeChangedTypes
 	safeChangedTypesByMesh   *safeChangedTypesByMesh
 	eventBus                 events.EventBus
-	hashCacheBaseMeshContext *cache.Cache
-	hashCacheGlobalContext   *cache.Cache
+	hashCacheBaseMeshContext *RedisCache
+	hashCacheGlobalContext   *RedisCache
 }
 
 // MeshContextBuilder
@@ -181,6 +179,16 @@ func NewMeshContextBuilderComponent(
 		typeSet[typ] = struct{}{}
 	}
 
+	meshCtxCache, err := NewRedisCache("127.0.0.1:6379", meshContextCleanupTime)
+	if err != nil {
+		logger.Error(err, "no redis cache setup for base mesh contexts")
+	}
+
+	globalCtxCache, err := NewRedisCache("127.0.0.1:6379", globalContextCleanupTime)
+	if err != nil {
+		logger.Error(err, "no redis cache setup for global contexts")
+	}
+
 	return &meshContextBuilder{
 		rm:              rm,
 		typeSet:         typeSet,
@@ -197,8 +205,8 @@ func NewMeshContextBuilderComponent(
 			types: map[core_model.ResourceType]struct{}{},
 		},
 		eventBus:                 eventBus,
-		hashCacheBaseMeshContext: cache.New(meshContextCleanupTime, time.Duration(int64(float64(meshContextCleanupTime)*0.9))),
-		hashCacheGlobalContext:   cache.New(globalContextCleanupTime, time.Duration(int64(float64(globalContextCleanupTime)*0.9))),
+		hashCacheBaseMeshContext: meshCtxCache,
+		hashCacheGlobalContext:   globalCtxCache,
 	}
 }
 
@@ -232,10 +240,6 @@ func NewMeshContextBuilder(
 	}
 }
 
-func useReactiveBuildBaseMeshContext() bool {
-	return os.Getenv("EXPERIMENTAL_REACTIVE_BASE_MESH_CONTEXT") != ""
-}
-
 func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
@@ -264,34 +268,30 @@ func (m *meshContextBuilder) Start(stop <-chan struct{}) error {
 			return nil
 
 		case event := <-listener.Recv():
+			resChange := event.(events.ResourceChangedEvent)
+			l.Info("Received", "ResourceChangedEvent", resChange)
+			mesh := resChange.Key.Mesh
 
-			if useReactiveBuildBaseMeshContext() {
-				resChange := event.(events.ResourceChangedEvent)
-				l.Info("Received", "ResourceChangedEvent", resChange)
-				mesh := resChange.Key.Mesh
-
-				if mesh != "" {
-					l.Info("Type has changed for mesh", "type", resChange.Type, "mesh", mesh)
-					m.setTypeChanged(mesh, resChange.Type)
-				} else {
-					desc, err := registry.Global().DescriptorFor(resChange.Type)
-					if err != nil {
-						l.Error(err, "Could not get type")
+			if mesh != "" {
+				l.Info("Type has changed for mesh", "type", resChange.Type, "mesh", mesh)
+				m.setTypeChanged(mesh, resChange.Type)
+			} else {
+				desc, err := registry.Global().DescriptorFor(resChange.Type)
+				if err != nil {
+					l.Error(err, "Could not get type")
+					continue
+				}
+				if desc.Name == system.ConfigType {
+					mesh, ok := vips.MeshFromConfigKey(resChange.Key.Name)
+					if !ok {
 						continue
 					}
-					if desc.Name == system.ConfigType {
-						mesh, ok := vips.MeshFromConfigKey(resChange.Key.Name)
-						if !ok {
-							continue
-						}
 
-						l.Info("Type has changed for mesh", "type", "Config", "mesh", mesh)
-						m.setTypeChanged(mesh, resChange.Type)
-						// well should alwys be true because we're in a branch where mesh == ""?
-					} else if desc.Scope == core_model.ScopeGlobal {
-						m.globalChangedTypes.markTypeChanged(resChange.Type)
-					}
-
+					l.Info("Type has changed for mesh", "type", "Config", "mesh", mesh)
+					m.setTypeChanged(mesh, resChange.Type)
+					// well should alwys be true because we're in a branch where mesh == ""?
+				} else if desc.Scope == core_model.ScopeGlobal {
+					m.globalChangedTypes.markTypeChanged(resChange.Type)
 				}
 
 			}
@@ -330,28 +330,39 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	}
 
 	var latestGlobalContext *GlobalContext
-	cachedGlobalContext, ok := m.hashCacheGlobalContext.Get("")
-	if ok && !isDefaultMesh {
-		latestGlobalContext = cachedGlobalContext.(*GlobalContext)
+	cachedGlobalContext := &GlobalContext{}
+	ok, err := m.hashCacheGlobalContext.Get(ctx, meshName, cachedGlobalContext)
+	if err == nil && ok && !isDefaultMesh {
+		latestGlobalContext = cachedGlobalContext
+	} else if err != nil {
+		l.Error(err, "could not fetch global context from redis cache")
 	}
+
 	globalContext, err := m.BuildGlobalContextIfChanged(ctx, latestGlobalContext, meshName)
 	if err != nil {
 		return nil, err
 	}
-	m.hashCacheGlobalContext.SetDefault("", globalContext)
+
+	err = m.hashCacheGlobalContext.Set(ctx, meshName, globalContext)
+	if err != nil {
+		l.Error(err, "could not set global mesh context in redis cache")
+	}
 
 	var baseMeshContext *BaseMeshContext
-	if useReactiveBuildBaseMeshContext() && !isDefaultMesh {
+	if !isDefaultMesh {
 
 		// Check hashCache first for an existing mesh latestContext
 		var latestBaseMeshContext *BaseMeshContext
-		if m.hashCacheBaseMeshContext != nil {
-			if cached, ok := m.hashCacheBaseMeshContext.Get(meshName); ok {
-				latestBaseMeshContext = cached.(*BaseMeshContext)
-				if m.shouldLogExcessively(meshName) {
-					l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.hash)
-				}
+
+		cached := &BaseMeshContext{}
+		ok, err := m.hashCacheBaseMeshContext.Get(ctx, meshName, cached)
+		if err == nil && ok {
+			latestBaseMeshContext = cached
+			if m.shouldLogExcessively(meshName) {
+				l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.hash)
 			}
+		} else if err != nil {
+			l.Error(err, "could not fetch mesh context from redis cache", "mesh", meshName)
 		}
 
 		baseMeshContext, err = m.BuildBaseMeshContextIfChangedV2(ctx, meshName, latestBaseMeshContext)
@@ -371,7 +382,11 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	if m.shouldLogExcessively(meshName) {
 		l.Info("Saving base mesh context in hash cache", "mesh", meshName, "hash", baseMeshContext.hash)
 	}
-	m.hashCacheBaseMeshContext.SetDefault(meshName, baseMeshContext)
+
+	err = m.hashCacheBaseMeshContext.Set(ctx, meshName, baseMeshContext)
+	if err != nil {
+		l.Error(err, "could not set base mesh context in redis cache", "mesh", meshName)
+	}
 
 	var managedTypes []core_model.ResourceType // The types not managed by global nor baseMeshContext
 	resources := NewResources()
