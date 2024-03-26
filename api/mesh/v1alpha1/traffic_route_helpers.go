@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"encoding/gob"
 
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 )
