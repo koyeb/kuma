@@ -9,10 +9,6 @@ import (
 	util_proto "github.com/kumahq/kuma/pkg/util/proto"
 )
 
-func init() {
-	gob.Register(&TrafficRoute_LoadBalancer_RoundRobin_{})
-}
-
 // GetSplitWithDestination returns unified list of split regardless if split or destination is used
 // Destination is a syntax sugar over single split with weight of 1.
 func (x *TrafficRoute_Conf) GetSplitWithDestination() []*TrafficRoute_Split {
