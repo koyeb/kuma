@@ -189,7 +189,7 @@ func buildRuntime(appCtx context.Context, cfg kuma_cp.Config) (core_runtime.Runt
 	initializeTokenIssuers(builder)
 
 	initializeMeshContextBuilderComponent(builder, cfg.KoyebRedisUrl)
-	if err := initializeMeshCache(builder); err != nil {
+	if err := initializeMeshCache(builder, cfg.KoyebRedisUrl); err != nil {
 		return nil, err
 	}
 
@@ -518,12 +518,13 @@ func initializeConfigManager(builder *core_runtime.Builder) {
 	builder.WithConfigManager(config_manager.NewConfigManager(builder.ConfigStore()))
 }
 
-func initializeMeshCache(builder *core_runtime.Builder) error {
+func initializeMeshCache(builder *core_runtime.Builder, redisUrl string) error {
 
 	meshSnapshotCache, err := mesh_cache.NewCache(
 		builder.Config().Store.Cache.ExpirationTime.Duration,
 		builder.MeshContextBuilderComponent(),
 		builder.Metrics(),
+		redisUrl,
 	)
 	if err != nil {
 		return err
