@@ -38,7 +38,7 @@ run-db:
   docker run --rm --link kuma-db:kuma-db -e PGHOST=kuma-db -e PGUSER=kuma -e PGPASSWORD=kuma postgres:14 /bin/bash -c "echo 'CREATE DATABASE \"cp-par1\" ENCODING UTF8;' | psql"
 
 stop-db:
-  docker stop kuma-db
+  docker stop kuma-db kuma-cache
 
 init: _gen-certs
 
