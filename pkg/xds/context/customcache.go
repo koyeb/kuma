@@ -7,9 +7,15 @@ import (
 	"fmt"
 	"time"
 
+	gocache "github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
+
+type CustomCache interface {
+	Set(ctx context.Context, meshName string, item cachable) error
+	Get(ctx context.Context, meshName string, receiver cachable) (bool, error)
+}
 
 func NewRedisCache(address string, defaultTTL time.Duration) (*RedisCache, error) {
 	client := redis.NewClient(&redis.Options{
@@ -96,4 +102,59 @@ func (rc *RedisCache) Get(ctx context.Context, meshName string, receiver cachabl
 	}
 
 	return true, nil
+}
+
+type InMemoryCache struct {
+	client *gocache.Cache
+}
+
+func NewInMemoryCache(defaultTTL time.Duration) *InMemoryCache {
+	return &InMemoryCache{
+		client: gocache.New(defaultTTL, time.Duration(int64(float64(defaultTTL)*0.9))),
+	}
+}
+
+func (mc *InMemoryCache) Set(_ context.Context, meshName string, item cachable) error {
+	if mc == nil || mc.client == nil {
+		return nil
+	}
+
+	key := item.CacheKeyName(meshName)
+	mc.client.SetDefault(key, item)
+
+	return nil
+}
+
+func (mc *InMemoryCache) Get(_ context.Context, meshName string, receiver cachable) (bool, error) {
+	if mc == nil || mc.client == nil {
+		return false, nil
+	}
+
+	key := receiver.CacheKeyName(meshName)
+	cached, ok := mc.client.Get(key)
+	if !ok {
+		return false, nil
+	}
+
+	switch v := receiver.(type) {
+	case *GlobalContext:
+		globalContext, ok := cached.(*GlobalContext)
+		if !ok {
+			return false, errors.New("cached value is not a *GlobalContext")
+		}
+
+		*v = *globalContext
+		return true, nil
+
+	case *BaseMeshContext:
+		baseMeshContext, ok := cached.(*BaseMeshContext)
+		if !ok {
+			return false, errors.New("cached value is not a *BaseMeshContext")
+		}
+
+		*v = *baseMeshContext
+		return true, nil
+	}
+
+	return false, errors.New("unhandled type, only handling *GlobalContext and *BaseMeshContext")
 }
