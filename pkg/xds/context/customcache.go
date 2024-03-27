@@ -41,6 +41,10 @@ type RedisCache struct {
 	defaultTTL time.Duration
 }
 
+func (mc *MeshContext) CacheKeyName(meshName string) string {
+	return fmt.Sprintf("context-mesh-%s", meshName)
+}
+
 func (gc *GlobalContext) CacheKeyName(_ string) string {
 	// shared between all meshes
 	return "global-context"
@@ -154,7 +158,15 @@ func (mc *InMemoryCache) Get(_ context.Context, meshName string, receiver cachab
 
 		*v = *baseMeshContext
 		return true, nil
+	case *MeshContext:
+		meshContext, ok := cached.(*MeshContext)
+		if !ok {
+			return false, errors.New("cached value is not a *MeshContext")
+		}
+
+		*v = *meshContext
+		return true, nil
 	}
 
-	return false, errors.New("unhandled type, only handling *GlobalContext and *BaseMeshContext")
+	return false, errors.New("unhandled type, only handling *GlobalContext, *BaseMeshContext and *MeshContext")
 }

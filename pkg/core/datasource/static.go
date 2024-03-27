@@ -2,6 +2,7 @@ package datasource
 
 import (
 	"context"
+	"encoding/gob"
 
 	"github.com/pkg/errors"
 
@@ -12,21 +13,25 @@ import (
 )
 
 type staticLoader struct {
-	secrets map[model.ResourceKey]*system.SecretResource
+	Secrets map[model.ResourceKey]*system.SecretResource
 }
 
 var _ Loader = &staticLoader{}
+
+func init() {
+	gob.Register(&staticLoader{})
+}
 
 // NewStaticLoader returns a loader that supports predefined list of secrets
 // This implementation is more performant if than dynamic if we already have the list of all secrets
 // because we can avoid I/O operations.
 func NewStaticLoader(secrets []*system.SecretResource) Loader {
 	loader := staticLoader{
-		secrets: map[model.ResourceKey]*system.SecretResource{},
+		Secrets: map[model.ResourceKey]*system.SecretResource{},
 	}
 
 	for _, secret := range secrets {
-		loader.secrets[model.MetaToResourceKey(secret.GetMeta())] = secret
+		loader.Secrets[model.MetaToResourceKey(secret.GetMeta())] = secret
 	}
 
 	return &loader
@@ -57,7 +62,7 @@ func (s *staticLoader) loadSecret(mesh string, name string) ([]byte, error) {
 		Name: name,
 	}
 
-	secret := s.secrets[key]
+	secret := s.Secrets[key]
 	if secret == nil {
 		return nil, core_store.ErrorResourceNotFound(system.SecretType, name, mesh)
 	}

@@ -152,10 +152,10 @@ type MeshContextBuilder interface {
 	NeedLeaderElection() bool
 }
 
-// meshContextCleanupTime is the time after which the mesh context is removed from
+// baseMeshContextCleanupTime is the time after which the base mesh context is removed from
 // the longer TTL cache.
 // It exists to ensure contexts of deleted Meshes are eventually cleaned up.
-const meshContextCleanupTime = 45 * time.Minute
+const baseMeshContextCleanupTime = 45 * time.Minute
 const globalContextCleanupTime = 2 * time.Minute
 
 type MeshContextBuilderComponent interface {
@@ -184,13 +184,13 @@ func NewMeshContextBuilderComponent(
 	var meshCtxCache CustomCache
 	var globalCtxCache CustomCache
 
-	meshCtxCache = NewInMemoryCache(meshContextCleanupTime)
+	meshCtxCache = NewInMemoryCache(baseMeshContextCleanupTime)
 	globalCtxCache = NewInMemoryCache(globalContextCleanupTime)
 
 	if os.Getenv("USE_REDIS_CACHE") != "" {
-		logger.Info("Attempting to use redis cache for mesh contexts")
+		logger.Info("Attempting to use redis cache for base and global mesh contexts")
 
-		meshCtxCache, err = NewRedisCache(redisUrl, meshContextCleanupTime)
+		meshCtxCache, err = NewRedisCache(redisUrl, baseMeshContextCleanupTime)
 		if err != nil {
 			logger.Error(err, "no redis cache setup for base mesh contexts")
 		}

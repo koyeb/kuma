@@ -1,6 +1,14 @@
 package context
 
-import mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
+import (
+	"encoding/gob"
+
+	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
+)
+
+func init() {
+	gob.Register(AnyToAnyReachableServicesGraph{})
+}
 
 // ReachableServicesGraph is a graph of services in the mesh.
 // We can test whether the DPP of given tags can reach a service.
