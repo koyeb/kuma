@@ -371,7 +371,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 		if err == nil && ok {
 			latestBaseMeshContext = cached
 			if m.shouldLogExcessively(meshName) {
-				l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.hash)
+				l.Info("Found latest base mesh context to re-use", "mesh", meshName, "hash", latestBaseMeshContext.Hash())
 			}
 		} else if err != nil {
 			l.Error(err, "could not fetch mesh context from redis cache", "mesh", meshName)
@@ -392,7 +392,7 @@ func (m *meshContextBuilder) BuildIfChanged(ctx context.Context, meshName string
 	// with the effect that often used contexts remain in the cache while no
 	// longer used contexts are evicted.
 	if m.shouldLogExcessively(meshName) {
-		l.Info("Saving base mesh context in hash cache", "mesh", meshName, "hash", baseMeshContext.hash)
+		l.Info("Saving base mesh context in hash cache", "mesh", meshName, "hash", baseMeshContext.Hash())
 	}
 
 	err = m.cacheBaseMeshContext.Set(ctx, meshName, baseMeshContext)
@@ -542,11 +542,11 @@ func (m *meshContextBuilder) BuildGlobalContextIfChanged(ctx context.Context, la
 	}
 
 	newHash := rmap.HashForMesh(meshName)
-	if meshName != "default" && latest != nil && bytes.Equal(newHash, latest.hash) {
+	if meshName != "default" && latest != nil && bytes.Equal(newHash, latest.TheHash) {
 		return latest, nil
 	}
 	return &GlobalContext{
-		hash:        newHash,
+		TheHash:     newHash,
 		ResourceMap: rmap,
 	}, nil
 }
@@ -621,12 +621,12 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChangedV2(ctx context.Context
 	m.clearTypeChanged(meshName)
 
 	newHash := rmap.HashForMesh(meshName)
-	if latest != nil && bytes.Equal(newHash, latest.hash) {
+	if latest != nil && bytes.Equal(newHash, latest.TheHash) {
 		return latest, nil
 	}
 
 	return &BaseMeshContext{
-		hash:        newHash,
+		TheHash:     newHash,
 		Mesh:        mesh,
 		ResourceMap: rmap,
 	}, nil
@@ -671,11 +671,11 @@ func (m *meshContextBuilder) BuildBaseMeshContextIfChanged(ctx context.Context, 
 		}
 	}
 	newHash := rmap.HashForMesh(meshName)
-	if latest != nil && bytes.Equal(newHash, latest.hash) {
+	if latest != nil && bytes.Equal(newHash, latest.TheHash) {
 		return latest, nil
 	}
 	return &BaseMeshContext{
-		hash:        newHash,
+		TheHash:     newHash,
 		Mesh:        mesh,
 		ResourceMap: rmap,
 	}, nil
@@ -899,8 +899,8 @@ func (m *meshContextBuilder) decorateWithCrossMeshResources(ctx context.Context,
 func (m *meshContextBuilder) hash(meshName string, globalContext *GlobalContext, baseMeshContext *BaseMeshContext, managedTypes []core_model.ResourceType, resources Resources) []byte {
 	slices.Sort(managedTypes)
 	hasher := fnv.New128a()
-	_, _ = hasher.Write(globalContext.hash)
-	_, _ = hasher.Write(baseMeshContext.hash)
+	_, _ = hasher.Write(globalContext.TheHash)
+	_, _ = hasher.Write(baseMeshContext.TheHash)
 	for _, resType := range managedTypes {
 		_, _ = hasher.Write(core_model.ResourceListHashForMesh(resources.MeshLocalResources[resType], meshName))
 	}

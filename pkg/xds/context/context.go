@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 
-	"google.golang.org/protobuf/types/known/structpb"
 	mesh_proto "github.com/kumahq/kuma/api/mesh/v1alpha1"
 	"github.com/kumahq/kuma/pkg/core"
 	"github.com/kumahq/kuma/pkg/core/datasource"
@@ -12,6 +11,7 @@ import (
 	"github.com/kumahq/kuma/pkg/core/xds"
 	"github.com/kumahq/kuma/pkg/xds/envoy"
 	"github.com/kumahq/kuma/pkg/xds/secrets"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func init() {
@@ -44,24 +44,24 @@ type ControlPlaneContext struct {
 // GlobalContext holds resources that are Global
 type GlobalContext struct {
 	ResourceMap ResourceMap
-	hash        []byte
+	TheHash     []byte
 }
 
 // Hash base64 version of the hash mostly used for testing
 func (g GlobalContext) Hash() string {
-	return base64.StdEncoding.EncodeToString(g.hash)
+	return base64.StdEncoding.EncodeToString(g.TheHash)
 }
 
 // BaseMeshContext holds for a Mesh a set of resources that are changing less often (policies, external services...)
 type BaseMeshContext struct {
 	Mesh        *core_mesh.MeshResource
 	ResourceMap ResourceMap
-	hash        []byte
+	TheHash     []byte
 }
 
 // Hash base64 version of the hash mostly useed for testing
 func (g BaseMeshContext) Hash() string {
-	return base64.StdEncoding.EncodeToString(g.hash)
+	return base64.StdEncoding.EncodeToString(g.TheHash)
 }
 
 // MeshContext contains shared data within one mesh that is required for generating XDS config.
