@@ -23,6 +23,8 @@ type Cache struct {
 	hashCache xds_context.CustomCache
 
 	meshContextBuilder xds_context.MeshContextBuilder
+
+	usingRedisCache bool
 }
 
 // cleanupTime is the time after which the mesh context is removed from
@@ -43,6 +45,7 @@ func NewCache(
 		return nil, err
 	}
 
+	usingRedisCache := false
 	var meshCtxCache xds_context.CustomCache
 	meshCtxCache = xds_context.NewInMemoryCache(cleanupTime)
 	if os.Getenv("USE_REDIS_CACHE") != "" {
@@ -52,6 +55,8 @@ func NewCache(
 		if err != nil {
 			logger.Error(err, "no redis cache setup for base mesh contexts")
 			meshCtxCache = xds_context.NewInMemoryCache(cleanupTime)
+		} else {
+			usingRedisCache = true
 		}
 	}
 
@@ -60,38 +65,47 @@ func NewCache(
 		cache:              c,
 		meshContextBuilder: meshContextBuilder,
 		hashCache:          meshCtxCache,
+		usingRedisCache:    usingRedisCache,
 	}, nil
 }
 
 func (c *Cache) GetMeshContext(ctx context.Context, mesh string) (xds_context.MeshContext, error) {
+	if c.usingRedisCache {
+		return c.getMeshContextImpl(ctx, mesh)
+	}
+
 	// Check our short TTL cache for a context, ignoring whether there have been
 	// changes since it was generated.
 	elt, err := c.cache.GetOrRetrieve(ctx, mesh, once.RetrieverFunc(func(ctx context.Context, key string) (interface{}, error) {
-		// Check hashCache first for an existing mesh latestContext
-		latestContext := &xds_context.MeshContext{}
-		_, err := c.hashCache.Get(ctx, mesh, latestContext)
-		if err != nil {
-			logger.Error(err, "could not fetch latest mesh context from redis cache", "mesh", mesh)
-		}
-
-		// Rebuild the context only if the hash has changed
-		latestContext, err = c.meshContextBuilder.BuildIfChanged(ctx, mesh, latestContext)
-		if err != nil {
-			return xds_context.MeshContext{}, err
-		}
-
-		// By always setting the mesh context, we refresh the TTL
-		// with the effect that often used contexts remain in the cache while no
-		// longer used contexts are evicted.
-		err = c.hashCache.Set(ctx, mesh, latestContext)
-		if err != nil {
-			logger.Error(err, "could not set latest mesh context in redis cache", "mesh", mesh)
-		}
-
-		return *latestContext, nil
+		return c.getMeshContextImpl(ctx, mesh)
 	}))
 	if err != nil {
 		return xds_context.MeshContext{}, err
 	}
 	return elt.(xds_context.MeshContext), nil
+}
+
+func (c *Cache) getMeshContextImpl(ctx context.Context, mesh string) (xds_context.MeshContext, error) {
+	// Check hashCache first for an existing mesh latestContext
+	latestContext := &xds_context.MeshContext{}
+	_, err := c.hashCache.Get(ctx, mesh, latestContext)
+	if err != nil {
+		logger.Error(err, "could not fetch latest mesh context from redis cache", "mesh", mesh)
+	}
+
+	// Rebuild the context only if the hash has changed
+	latestContext, err = c.meshContextBuilder.BuildIfChanged(ctx, mesh, latestContext)
+	if err != nil {
+		return xds_context.MeshContext{}, err
+	}
+
+	// By always setting the mesh context, we refresh the TTL
+	// with the effect that often used contexts remain in the cache while no
+	// longer used contexts are evicted.
+	err = c.hashCache.Set(ctx, mesh, latestContext)
+	if err != nil {
+		logger.Error(err, "could not set latest mesh context in redis cache", "mesh", mesh)
+	}
+
+	return *latestContext, nil
 }
